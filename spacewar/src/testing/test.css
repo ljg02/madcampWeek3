@@ -1,0 +1,20 @@
+.jump-container {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    background-color: #f0f0f0;
+  }
+  
+  .box {
+    width: 50px;
+    height: 50px;
+    background-color: #3498db;
+    position: relative;
+    transition: transform 0.3s ease;
+  }
+  
+  .jump {
+    transform: translateY(-100px);
+  }
+  
