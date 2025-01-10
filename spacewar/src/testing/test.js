@@ -15,6 +15,7 @@ const Test = () => {
   // Handle key press and release
   useEffect(() => {
     const handleKeyDown = (event) => {
+      console.log(isJumping);
       setKeys((prevKeys) => ({ ...prevKeys, [event.key]: true }));
     };
 
@@ -52,11 +53,11 @@ const Test = () => {
         setPosition((prevPosition) => Math.max(prevPosition - moveSpeed, 0));
       }
       if (keys['d']) {
-        setPosition((prevPosition) => prevPosition + moveSpeed);
+        setPosition((prevPosition) => Math.min(prevPosition + moveSpeed, 900));
       }
     };
 
-    const interval = setInterval(handleJumpAndMove, 20);
+    const interval = setInterval(handleJumpAndMove, 15);
     return () => clearInterval(interval);
   }, [keys, velocity]);
 
@@ -64,6 +65,7 @@ const Test = () => {
   useEffect(() => {
     if (keys['w'] && !isJumping) {
       setIsJumping(true);
+      console.log('jump : ', isJumping);
       setVelocity(jumpPower); // Apply initial upward jump velocity
     }
   }, [keys, isJumping]);
