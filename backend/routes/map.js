@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 
 // Example 2D map (replace with your map logic)
-const MAP_DATA =  Array.from({ length: 500 }, () =>
-  Array.from({ length: 500 }, () => (Math.random() > 0.5 ? 1 : 0))
+const MAP_DATA =  Array.from({ length: 1000 }, () =>
+  Array.from({ length: 1000 }, () => (Math.random() > 0.5 ? 1 : 0))
 );
 
 // GET /api/map/chunk
