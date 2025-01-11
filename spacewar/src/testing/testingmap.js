@@ -15,8 +15,8 @@ function Map() {
   // Calculate viewport size based on screen dimensions
   useEffect(() => {
     const handleResize = () => {
-      const width = Math.floor(window.innerWidth / TILE_SIZE);
-      const height = Math.floor(window.innerHeight / TILE_SIZE);
+      const width = Math.floor(window.innerWidth / TILE_SIZE-1);
+      const height = Math.floor(window.innerHeight / TILE_SIZE-1);
       setViewportSize({ width, height });
     };
 
@@ -35,10 +35,13 @@ function Map() {
   // Fetch map chunk from backend
   const fetchMapChunk = async (x, y) => {
     try {
+      //console.log('x: ', x, ', y: ', y);
+      //console.log('width: ', viewportSize.width, ', height: ', viewportSize.height);
       const response = await axios.get(
         `http://localhost:5000/api/map/chunk?x=${x}&y=${y}&width=${viewportSize.width}&height=${viewportSize.height}`
       );
       if (response.data && Array.isArray(response.data.data)) {
+        console.log('map fetch success');
         setMapData(response.data.data);
       } else {
         console.error("Invalid map data:", response.data);
@@ -58,13 +61,13 @@ function Map() {
         newPlayerPosition.y = Math.max(0, newPlayerPosition.y - 1);
         break;
       case "ArrowDown":
-        newPlayerPosition.y += 3;
+        newPlayerPosition.y += 1;
         break;
       case "ArrowLeft":
         newPlayerPosition.x = Math.max(0, newPlayerPosition.x - 1);
         break;
       case "ArrowRight":
-        newPlayerPosition.x += 3;
+        newPlayerPosition.x += 1;
         break;
       default:
         return;
@@ -80,8 +83,8 @@ function Map() {
   }, [playerPosition]);
 
   // Calculate offset to move the map
-  const offsetX = TILE_SIZE*-1 ;
-  const offsetY = TILE_SIZE*-1 ;
+  const offsetX = TILE_SIZE;
+  const offsetY = TILE_SIZE;
 
   return (
     <div
