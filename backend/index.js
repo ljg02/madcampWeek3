@@ -6,7 +6,6 @@ require('dotenv').config();
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors());
 app.use(cors({
   origin: 'http://localhost:3000',
   methods: ['GET','POST','PUT','DELETE'],
@@ -19,8 +18,10 @@ app.use((req, res, next) => {
 
 //라우터 연결
 const mapRouter = require('./routes/map.js');
+const monsterRoutes=require('./routes/monsterback.js');
 
 app.use('/api/map', mapRouter);
+app.use('/api/monster', monsterRoutes);
 
 
 // 환경 변수
