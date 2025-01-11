@@ -2,19 +2,40 @@ const express = require('express');
 const router = express.Router();
 
 // Monster state
-let monster = {
-  ...spawnMonsterOnEdge(),
-  speed: Math.random()*1.5, // Random speed between 1 and 4
-  t: 0.001, // LERP interpolation factor (adjust this for smoother movement)
-  zigzagAmplitude: Math.random()*50+20,
-  zigzagFrequency: 0.7,
-  zigzagDirection: 1,
-  frameCount:0,
-};
+let monsters=spawnMonsters(5);
 
-function spawnMonsterOnEdge() {
-  const edges = ['top', 'bottom', 'left', 'right'];
-  const edge = edges[Math.floor(Math.random() * edges.length)];
+function spawnMonsters(count){
+    const monstersArray=[];
+    const edges=['top','bottom', 'left','right'];
+    for(let i=0; i< count; i++){
+        const edge=edges[i%edges.length];
+        monstersArray.push({
+            ...spawnMonsterOnEdge(edge),
+            speed: Math.random()*0.5+0.7, // Random speed between 1 and 4
+            t: 0.001, // LERP interpolation factor (adjust this for smoother movement)
+            zigzagAmplitude: Math.random()*5+20,
+            zigzagFrequency: Math.random()*0.5+0.01,
+            zigzagDirection: Math.random()<0.5?-1:1,
+            framInterval: Math.floor(Math.random()*50)+20,
+            frameCount:0,
+        });
+    }
+    return monstersArray;
+}
+
+// let monster = {
+//   ...spawnMonsterOnEdge(),
+//   speed: Math.random()*1.5, // Random speed between 1 and 4
+//   t: 0.001, // LERP interpolation factor (adjust this for smoother movement)
+//   zigzagAmplitude: Math.random()*50+20,
+//   zigzagFrequency: 0.7,
+//   zigzagDirection: 1,
+//   frameCount:0,
+// };
+
+function spawnMonsterOnEdge(edge) {
+//   const edges = ['top', 'bottom', 'left', 'right'];
+//   const edge = edges[Math.floor(Math.random() * edges.length)];
   const mapWidth = 1000;
   const mapHeight = 500;
 
@@ -33,13 +54,13 @@ function spawnMonsterOnEdge() {
 }
 
 router.get('/position', (req, res) => {
-  res.json(monster);
+  res.json(monsters);
 });
 
 // Endpoint to update the monster's position using LERP
 router.post('/move', (req, res) => {
   const { width, height } = req.body;
-
+  monsters=monsters.map((monster)=>{
   // Calculate the center of the map
   const centerX = width / 2;
   const centerY = height / 2;
@@ -52,15 +73,17 @@ router.post('/move', (req, res) => {
         dx/=length;
         dy/=length;
     }
+    dx*=monster.speed;
+    dy*=monster.speed;
     monster.frameCount++;
-    if(monster.frameCount%monster.zigzagFrequency===0){
+    if(monster.frameCount%30===0){
         monster.zigzagDirection*=-1;
     }
     const perpDx=-dy;
     const perpDy=dx;
 
-    const zigzagX=perpDx*monster.zigzagAmplitude*monster.zigzagFrequency;
-    const zigzagY=perpDy*monster.zigzagAmplitude*monster.zigzagFrequency;
+    const zigzagX=perpDx*monster.zigzagAmplitude*monster.zigzagDirection;
+    const zigzagY=perpDy*monster.zigzagAmplitude*monster.zigzagDirection;
 
     monster.x+=(dx*monster.speed)+zigzagX*0.1;
     monster.y+=(dy*monster.speed)+zigzagY*0.1;
@@ -70,7 +93,9 @@ router.post('/move', (req, res) => {
     if (monster.y < 0) monster.y = 0;
     if (monster.y > height) monster.y = height;
 
-    res.json(monster);
+    return monster
+});
+res.json(monsters);
 });
 
 module.exports = router;
