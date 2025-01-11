@@ -1,117 +1,4 @@
 
-// import React, { useState, useEffect } from "react";
-// import axios from "axios";
-
-// const TILE_SIZE = 10; // Size of each tile in pixels
-
-// function Map() {
-//   const [mapData, setMapData] = useState([]);
-//   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 });
-
-//   // Fetch initial map chunk
-//   useEffect(() => {
-//     fetchMapChunk(playerPosition.x, playerPosition.y);
-//   }, [playerPosition]);
-
-//   // Fetch map chunk from backend
-//   const fetchMapChunk = async (x, y) => {
-//     try {
-//       const response = await axios.get(
-//         `http://localhost:5000/api/map/chunk?x=${x}&y=${y}&width=20&height=20`
-//       );
-//       if (response.data && Array.isArray(response.data.data)) {
-//         setMapData(response.data.data);
-//       } else {
-//         console.error("Invalid map data:", response.data);
-//         setMapData([]);
-//       }
-//     } catch (error) {
-//       console.error("Error fetching map chunk", error);
-//     }
-//   };
-
-//   // Handle arrow key input to move player
-//   const handleKeyDown = (e) => {
-//     let newPlayerPosition = { ...playerPosition };
-
-//     switch (e.key) {
-//       case "ArrowUp":
-//         newPlayerPosition.y=Math.max(0,newPlayerPosition.y+1);
-//         break;
-//       case "ArrowDown":
-//         newPlayerPosition.y-=1;
-//         break;
-//       case "ArrowLeft":
-//         newPlayerPosition.x=Math.max(0,newPlayerPosition.x+1);
-//         break;
-//       case "ArrowRight":
-//         newPlayerPosition.x-=1;
-//         break;
-//       default:
-//         return;
-//     }
-
-//     setPlayerPosition(newPlayerPosition);
-//   };
-
-//   // Add keydown event listener
-//   useEffect(() => {
-//     window.addEventListener("keydown", handleKeyDown);
-//     return () => window.removeEventListener("keydown", handleKeyDown);
-//   }, [playerPosition]);
-
-//   // Calculate offset to center the player in the viewport
-//   const offsetX = playerPosition.x  * TILE_SIZE * -1;
-//   const offsetY = playerPosition.y * TILE_SIZE * -1;
-
-//   return (
-//     <div
-//       style={{
-//         width: "100vh",
-//         height: "100vh",
-//         overflow: "hidden",
-//         position: "relative",
-//         border: "1px solid black",
-//       }}
-//     >
-//       <div
-//         style={{
-//           position: "absolute",
-//           top: offsetY,
-//           left: offsetX,
-//           display: "grid",
-//           gridTemplateColumns: `repeat(${mapData.length}, ${TILE_SIZE}px)`,
-//           gridTemplateRows: `repeat(${mapData.length}, ${TILE_SIZE}px)`,
-//         }}
-//       >
-//         {mapData.flat().map((tile, index) => (
-//             <div
-//               key={index}
-//               style={{
-//                 width: TILE_SIZE,
-//                 height: TILE_SIZE,
-//                 backgroundColor: tile === 1 ? "white" : "black",
-//                 border: "1px solid black",
-//               }}
-//             ></div>
-//           ))}
-//           </div>
-//           <div
-//         style={{
-//           width: TILE_SIZE,
-//           height: TILE_SIZE,
-//           backgroundColor: "red",
-//           position: "absolute",
-//           top: "50%",
-//           left: "50%",
-//           border: "2px solid white",
-//         }}
-//       ></div>
-//       </div>
-//   );
-// }
-
-// export default Map;
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
@@ -143,7 +30,7 @@ function Map() {
   // Fetch initial map chunk
   useEffect(() => {
     fetchMapChunk(playerPosition.x, playerPosition.y);
-  }, [playerPosition]);
+  }, [playerPosition.x, playerPosition.y,viewportSize.width, viewportSize.height]);
 
   // Fetch map chunk from backend
   const fetchMapChunk = async (x, y) => {
@@ -171,13 +58,13 @@ function Map() {
         newPlayerPosition.y = Math.max(0, newPlayerPosition.y - 1);
         break;
       case "ArrowDown":
-        newPlayerPosition.y += 1;
+        newPlayerPosition.y += 3;
         break;
       case "ArrowLeft":
         newPlayerPosition.x = Math.max(0, newPlayerPosition.x - 1);
         break;
       case "ArrowRight":
-        newPlayerPosition.x += 1;
+        newPlayerPosition.x += 3;
         break;
       default:
         return;
@@ -193,8 +80,8 @@ function Map() {
   }, [playerPosition]);
 
   // Calculate offset to move the map
-  const offsetX = (Math.floor(viewportSize.width/2 )) ;
-  const offsetY = (Math.floor(viewportSize.height/2 )) ;
+  const offsetX = TILE_SIZE*-1 ;
+  const offsetY = TILE_SIZE*-1 ;
 
   return (
     <div
@@ -223,7 +110,7 @@ function Map() {
               style={{
                 width: TILE_SIZE,
                 height: TILE_SIZE,
-                backgroundColor: tile === 1 ? "green" : "brown",
+                backgroundColor: tile === 1 ? "black" : "white",
                 border: "1px solid black",
               }}
             ></div>
