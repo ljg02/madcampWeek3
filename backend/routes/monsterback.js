@@ -54,7 +54,7 @@ function spawnMonsterOnEdge(edge) {
 }
 
 router.get('/position', (req, res) => {
-  res.json(monsters.map);
+  res.json(monsters);
 });
 
 // Endpoint to update the monster's position using LERP
