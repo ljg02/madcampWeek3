@@ -54,7 +54,7 @@ function spawnMonsterOnEdge(edge) {
 }
 
 router.get('/position', (req, res) => {
-  res.json(monsters);
+  res.json(monsters.map);
 });
 
 // Endpoint to update the monster's position using LERP
@@ -88,15 +88,43 @@ router.post('/move', (req, res) => {
     monster.x+=(dx*monster.speed)+zigzagX*0.1;
     monster.y+=(dy*monster.speed)+zigzagY*0.1;
 
-    if (monster.x < 0) monster.x = 0;
-    if (monster.x > width) monster.x = width;
-    if (monster.y < 0) monster.y = 0;
-    if (monster.y > height) monster.y = height;
+    // if (monster.x < 0) monster.x = 0;
+    // if (monster.x > width) monster.x = width;
+    // if (monster.y < 0) monster.y = 0;
+    // if (monster.y > height) monster.y = height;
 
     return monster
-});
+  });
 res.json(monsters);
 });
 
-module.exports = router;
+router.post('/shift',(req,res)=>{
+  const {direction, shiftAmount}=req.body;
 
+  monsters=monsters.map((monster)=>{
+    switch (direction){
+      case 'w':
+        monster.y +=shiftAmount;
+        break;
+      case 's':
+        monster.y-=shiftAmount;
+        break;
+      case 'a':
+        monster.x+=shiftAmount;
+        break;
+      case 'd':
+        monster.x-=shiftAmount;
+        break;
+      default:
+        break;
+    }
+    // if(monster.x<0) monster.x=0;
+    // if(monster.x>1000) monster.x=1000;
+    // if(monster.y<0) monster.y=0;
+    // if(monster.y>500) monster.y=500;
+    return monster;
+  });
+  res.json(monsters);
+});
+
+module.exports = router;
