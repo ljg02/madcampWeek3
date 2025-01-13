@@ -215,7 +215,7 @@ router.get('/position', (req, res) => {
 // POST endpoint to move monsters
 router.post('/move', (req, res) => {
   const { width, height } = req.body;
-  const bounceRadius = 100;
+  const bounceRadius = 150;
   const bounceBackDistance = 300;
 
   monsters = monsters.map((monster) => {
@@ -261,30 +261,55 @@ router.post('/move', (req, res) => {
 });
 
 // POST endpoint to shift monsters
+// router.post('/shift', (req, res) => {
+//   const { direction, shiftAmount } = req.body;
+
+//   monsters = monsters.map((monster) => {
+//     switch (direction) {
+//       case 'w':
+//         monster.y += shiftAmount;
+//         break;
+//       case 's':
+//         monster.y -= shiftAmount;
+//         break;
+//       case 'a':
+//         monster.x += shiftAmount;
+//         break;
+//       case 'd':
+//         monster.x -= shiftAmount;
+//         break;
+//       default:
+//         break;
+//     }
+//     return monster;
+//   });
+
+//   res.json(monsters);
+// });
+
+// module.exports = router;
 router.post('/shift', (req, res) => {
   const { direction, shiftAmount } = req.body;
 
   monsters = monsters.map((monster) => {
-    switch (direction) {
-      case 'w':
-        monster.y += shiftAmount;
-        break;
-      case 's':
-        monster.y -= shiftAmount;
-        break;
-      case 'a':
-        monster.x += shiftAmount;
-        break;
-      case 'd':
-        monster.x -= shiftAmount;
-        break;
-      default:
-        break;
-    }
+    direction.forEach((key)=> {
+      if(key==='ArrowUp'){
+        monster.y+=shiftAmount;
+      }
+      if(key==='ArrowDown'){
+        monster.y-=shiftAmount;
+      }
+      if(key==='ArrowLeft'){
+        monster.x+=shiftAmount;
+      }
+      if(key==='ArrowRight'){
+        monster.x-=shiftAmount;
+      }
+    });
     return monster;
   });
 
   res.json(monsters);
 });
 
-module.exports = router;
+module.exports=router;
