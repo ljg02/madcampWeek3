@@ -9,8 +9,11 @@ function Combine() {
 
     const [keys, setKeys] = useState({}); // Track pressed keys
 
-    //커서 각도 저장(degree)
+    // 커서 각도 저장(degree)
     const [weaponAngle, setWeaponAngle] = useState(0);
+
+    // "총알 목록" 상태
+    const [bullets, setBullets] = useState([]);
 
     // 우주선 크기 설정 (지름 300px, 반지름 150px)
     const SHIP_RADIUS = 150;
@@ -106,24 +109,93 @@ function Combine() {
             //     (우주선이 화면 정중앙에 고정이라 가정)
             const centerX = window.innerWidth / 2;
             const centerY = window.innerHeight / 2;
-      
+
             // (2) 마우스와 중심 사이의 벡터 (dx, dy)
             const dx = e.clientX - centerX;
             const dy = e.clientY - centerY;
-      
+
             // (3) 각도(라디안) 계산
             const angleInRadians = Math.atan2(dy, dx);
-      
+
             // (4) 도(deg) 단위로 변환
             const angleInDegrees = (angleInRadians * 180) / Math.PI;
-      
+
             setWeaponAngle(angleInDegrees);
-          };
-      
-          window.addEventListener("mousemove", handleMouseMove);
-          return () => {
+        };
+
+        window.addEventListener("mousemove", handleMouseMove);
+        return () => {
             window.removeEventListener("mousemove", handleMouseMove);
-          };
+        };
+    }, []);
+
+    // (5)-(A) 마우스 클릭 시 총알 발사
+    useEffect(() => {
+        const handleMouseDown = () => {
+            // 1) 현재 weaponAngle(도 단위) -> 라디안 변환
+            const angleRad = (weaponAngle * Math.PI) / 180;
+
+            // 2) 포탑이 위치한 x, y (우주선 중심 기준)
+            //    예: Turret에서 썼던 로직대로, shipRadius 근처에 있다고 가정
+            const turretDist = SHIP_RADIUS + 25; // 포탑이 조금 우주선 밖으로 나온 느낌
+            const turretX = turretDist * Math.cos(angleRad);
+            const turretY = turretDist * Math.sin(angleRad);
+
+            // 3) 새로운 총알 객체 생성
+            const newBullet = {
+                x: turretX,       // 우주선 중심 기준
+                y: turretY,
+                angleRad: angleRad,
+                speed: 10,         // 총알 속도
+                radius: 5,        // 총알 크기 (지름 10px)
+            };
+
+            // 4) state에 추가
+            setBullets((prev) => [...prev, newBullet]);
+        };
+
+        window.addEventListener("mousedown", handleMouseDown);
+        return () => window.removeEventListener("mousedown", handleMouseDown);
+    }, [weaponAngle]);
+
+    // (5)-(B) 총알 이동 & 화면 밖 제거
+    useEffect(() => {
+        const updateBullets = () => {
+            setBullets((prevBullets) => {
+                return prevBullets
+                    .map((bullet) => {
+                        // (1) 총알 이동
+                        const newX = bullet.x + bullet.speed * Math.cos(bullet.angleRad);
+                        const newY = bullet.y + bullet.speed * Math.sin(bullet.angleRad);
+
+                        return { ...bullet, x: newX, y: newY };
+                    })
+                    .filter((bullet) => {
+                        // (2) 화면 밖 여부 체크
+                        // 우주선 중심(화면 중앙)을 (0,0)으로 가정
+                        const centerX = 0;
+                        const centerY = 0;
+
+                        // 실제 화면 좌표: (bullet.x + centerX, bullet.y + centerY)
+                        // 여기선 그냥 bullet.x, bullet.y로 판단하기 위해
+                        // 특정 범위(예: -1000 ~ +1000) 내에서만 유효하다고 해볼게요.
+                        // 또는 window.innerWidth/innerHeight 등을 활용할 수도 있음.
+                        const limit = 2000;
+                        if (
+                            bullet.x < -limit ||
+                            bullet.x > limit ||
+                            bullet.y < -limit ||
+                            bullet.y > limit
+                        ) {
+                            return false; // 제거
+                        }
+                        return true; // 유지
+                    });
+            });
+        };
+
+        const interval = setInterval(updateBullets, 15);
+        return () => clearInterval(interval);
     }, []);
 
     // 실제 렌더링
@@ -179,7 +251,31 @@ function Combine() {
                 {/* 우주선 표면 포탑 */}
                 <Turret angle={weaponAngle} shipRadius={SHIP_RADIUS} />
             </div>
-            <GameMap offset={offset}/>
+
+            {/* 총알 렌더링 */}
+            {bullets.map((bullet, index) => {
+                // bullet.x, bullet.y는 우주선 중심(0,0) 기준 위치
+                return (
+                    <div
+                        key={index}
+                        style={{
+                            position: "absolute",
+                            top: "50%",
+                            left: "50%",
+                            width: bullet.radius * 2,
+                            height: bullet.radius * 2,
+                            borderRadius: "50%",
+                            backgroundColor: "yellow",
+                            transform: `translate(
+                                calc(-50% + ${bullet.x}px),
+                                calc(-50% + ${bullet.y}px)
+                            )`,
+                        }}
+                    />
+                );
+            })}
+
+            <GameMap offset={offset} />
         </div>
     );
 }
@@ -188,40 +284,40 @@ function Combine() {
 function Turret({ angle, shipRadius }) {
     // (1) angle(도 단위)를 라디안으로 변환
     const angleInRad = (angle * Math.PI) / 180;
-  
+
     // (2) 우주선 표면 위(x, y) 좌표
     //     - shipRadius만큼 떨어진 위치 = (r*cosθ, r*sinθ)
     //     - 조금 더 크게(바깥쪽)에 배치하고 싶다면 shipRadius + n
     //       조금 안쪽에 배치하고 싶다면 shipRadius - n
     const turretWidth = 50;
     const turretHeight = 20;
-    const turretDist = shipRadius+turretWidth/2; // 우주선 둘레 위
+    const turretDist = shipRadius + turretWidth / 2; // 우주선 둘레 위
     const turretX = turretDist * Math.cos(angleInRad);
     const turretY = turretDist * Math.sin(angleInRad);
-  
+
     // (3) 포탑 스타일
     //     - 위치: 우주선 중심부터 (turretX, turretY)만큼 이동
     //     - 회전: angle(도 단위)
     //     - transformOrigin 등을 적절히 조정
     const turretStyle = {
-      position: "absolute",
-      top: "50%",
-      left: "50%",
-      width: `${turretWidth}px`,   // 포탑 두께
-      height: `${turretHeight}px`,  // 포탑 길이
-      backgroundColor: "blue",
-      //transformOrigin: "50% 90%", 
-      transform: `
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        width: `${turretWidth}px`,   // 포탑 두께
+        height: `${turretHeight}px`,  // 포탑 길이
+        backgroundColor: "blue",
+        //transformOrigin: "50% 90%", 
+        transform: `
         translate(
           calc(-50% + ${turretX}px),
           calc(-50% + ${turretY}px)
         )
         rotate(${angle}deg)
       `,
-      // 포탑 끝이 원 둘레 '바깥쪽'을 향하도록 설정
+        // 포탑 끝이 원 둘레 '바깥쪽'을 향하도록 설정
     };
-  
+
     return <div style={turretStyle} />;
-  }
+}
 
 export default Combine;
