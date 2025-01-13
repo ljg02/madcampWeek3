@@ -177,7 +177,7 @@ function startSpawningMonsters() {
     spawnMonster(); // Spawn one monster
 
     // Set a random interval for the next spawn (between 1 and 5 seconds)
-    const nextSpawnTime = Math.random() * 4000 + 1000;
+    const nextSpawnTime = Math.random() * 4000 + 3000;
     setTimeout(spawnAtRandomInterval, nextSpawnTime);
   }
 
@@ -187,8 +187,8 @@ function startSpawningMonsters() {
 
 // Function to spawn a monster on a random edge
 function spawnMonsterOnEdge(edge) {
-  const mapWidth = 1000;
-  const mapHeight = 500;
+  const mapWidth = 1920;
+  const mapHeight = 1080;
 
   switch (edge) {
     case 'top':
@@ -219,11 +219,14 @@ router.post('/move', (req, res) => {
   const bounceBackDistance = 300;
 
   monsters = monsters.map((monster) => {
-    const centerX = width / 2;
-    const centerY = height / 2;
+    // const centerX = width / 2;
+    // const centerY = height / 2;
 
-    let dx = centerX - monster.x;
-    let dy = centerY - monster.y;
+    // let dx = centerX - monster.x;
+    // let dy = centerY - monster.y;
+
+    let dx= -monster.x;
+    let dy= -monster.y;
 
     const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
 
@@ -260,34 +263,7 @@ router.post('/move', (req, res) => {
   res.json(monsters);
 });
 
-// POST endpoint to shift monsters
-// router.post('/shift', (req, res) => {
-//   const { direction, shiftAmount } = req.body;
 
-//   monsters = monsters.map((monster) => {
-//     switch (direction) {
-//       case 'w':
-//         monster.y += shiftAmount;
-//         break;
-//       case 's':
-//         monster.y -= shiftAmount;
-//         break;
-//       case 'a':
-//         monster.x += shiftAmount;
-//         break;
-//       case 'd':
-//         monster.x -= shiftAmount;
-//         break;
-//       default:
-//         break;
-//     }
-//     return monster;
-//   });
-
-//   res.json(monsters);
-// });
-
-// module.exports = router;
 router.post('/shift', (req, res) => {
   const { direction, shiftAmount } = req.body;
 
@@ -306,6 +282,7 @@ router.post('/shift', (req, res) => {
         monster.x-=shiftAmount;
       }
     });
+
     return monster;
   });
 
