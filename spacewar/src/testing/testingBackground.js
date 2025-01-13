@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { io } from "socket.io-client";
 import GameMap from "../monster/monster.js";
 
 function World() {
+  const [socket, setSocket] = useState(null);
   //0) 우주선 월드 좌표
   const [shipPos, setShipPos] = useState({ x: 0, y: 0});
 
@@ -21,6 +23,7 @@ function World() {
   // 3) 입력 상태
   // ---------------------------
   const [keys, setKeys] = useState({});          // 키보드
+  const keysRef = useRef(keys);
   const [weaponAngle, setWeaponAngle] = useState(0); // 마우스 각도(도 단위)
 
   // ---------------------------
@@ -61,10 +64,18 @@ function World() {
   // ---------------------------------------------------------
   useEffect(() => {
     const handleKeyDown = (event) => {
-      setKeys((prevKeys) => ({ ...prevKeys, [event.key]: true }));
+      setKeys((prevKeys) => {
+        const newKeys = { ...prevKeys, [event.key]: true };
+        keysRef.current = newKeys; // keysRef 업데이트
+        return newKeys;
+      });
     };
     const handleKeyUp = (event) => {
-      setKeys((prevKeys) => ({ ...prevKeys, [event.key]: false }));
+      setKeys((prevKeys) => {
+        const newKeys = { ...prevKeys, [event.key]: false };
+        keysRef.current = newKeys; // keysRef 업데이트
+        return newKeys;
+      });
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -78,20 +89,13 @@ function World() {
 
   //우주선 이동(방향키)
   useEffect(() => {
+    if (!socket) return; // socket이 null이면 return
     const interval = setInterval(() => {
-      let { x, y } = shipPos;
-      const step = 10;
-      // WASD
-      if (keys['ArrowUp']) y -= step;
-      if (keys['ArrowDown']) y += step;
-      if (keys['ArrowLeft']) x -= step;
-      if (keys['ArrowRight']) x += step;
-
-      setShipPos({ x, y });
+      socket.emit("spaceShipMove", keysRef.current);
     }, 15);
 
     return () => clearInterval(interval);
-  }, [keys, shipPos]);
+  }, [socket]); // socket을 의존성 배열에 추가
 
   // ---------------------------------------------------------
   // (C) 플레이어어 이동 (우주선 로컬 좌표계)
@@ -126,7 +130,7 @@ function World() {
   // ---------------------------------------------------------
   // (D) 카메라 오프셋 계산
   //     - 우주선을 화면 중앙에 고정시키기 위해
-  //     - offset = screenCenter - shipPos
+  //     - offset = shipPos - screenCenter
   // ---------------------------------------------------------
   useEffect(() => {
     setCameraOffset({
@@ -155,12 +159,14 @@ function World() {
       // (4) 도(deg) 단위로 변환
       const angleInDegrees = (angleInRadians * 180) / Math.PI;
 
-      setWeaponAngle(angleInDegrees);
+      if(socket) {
+        socket.emit("turretMove", angleInDegrees);
+      }
     };
 
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+  }, [socket]);
 
   // ---------------------------------------------------------
   // (F) 마우스 클릭 -> 총알 발사 (월드 좌표)
@@ -185,39 +191,49 @@ function World() {
         angleRad,
         speed: 10,
         radius: 5,
+        mileage: 0, //총알이 주행한 거리
       };
 
-      setBullets((prev) => [...prev, newBullet]);
+      //setBullets((prev) => [...prev, newBullet]);
+      if(socket) {
+        socket.emit("shootBullet", newBullet);
+      }
     };
 
     window.addEventListener("mousedown", handleMouseDown);
     return () => window.removeEventListener("mousedown", handleMouseDown);
-  }, [weaponAngle, shipPos]);
+  }, [weaponAngle, shipPos, socket]);
 
-  // ---------------------------------------------------------
-  // (G) 총알 이동 (월드 좌표)
-  // ---------------------------------------------------------
   useEffect(() => {
-    const interval = setInterval(() => {
-      setBullets((prev) =>
-        prev
-          .map((bullet) => {
-            const newX = bullet.x + bullet.speed * Math.cos(bullet.angleRad);
-            const newY = bullet.y + bullet.speed * Math.sin(bullet.angleRad);
-            return { ...bullet, x: newX, y: newY };
-          })
-          .filter((b) => {
-            // 카메라를 벗어나면 제거
-            if (b.x < cameraOffset.x || b.x > cameraOffset.x+screenCenter.x*2 || b.y < cameraOffset.y || b.y > cameraOffset.y+screenCenter.y*2) {
-              return false;
-            }
-            return true;
-          })
-      );
-    }, 15);
+    // 1) 서버에 소켓 연결
+    const newSocket = io(`${process.env.REACT_APP_BACKEND_URL}`, {
+      transports: ["websocket"], // 옵션
+    });
+    setSocket(newSocket);
 
-    return () => clearInterval(interval);
-  }, [cameraOffset, screenCenter]);
+    // 2) 매 프레임마다 서버가 보내주는 'updateGameState' 이벤트 수신
+    newSocket.on("updateGameState", (data) => {
+      setShipPos(data.shipPos);
+      //setPlayerPos(data.players.playerPos);
+      setWeaponAngle(data.weaponAngle);
+      setBullets(data.bullets);
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  //useEffect(() => { console.log(bullets); }, [bullets])
+
+  // 예: 키보드/마우스 입력 후 내 상태 변경 시 서버에 emit
+  useEffect(() => {
+    if (!socket) return;
+    // 내 플레이어 상태를 서버에 전송
+    socket.emit("playerMove", {
+      playerPos,
+    });
+  }, [playerPos, socket]);
 
   // ---------------------------------------------------------
   // 렌더링
