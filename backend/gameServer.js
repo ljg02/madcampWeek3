@@ -20,7 +20,7 @@ let monsters = [];
 
 // 우주선에 상대적으로 스폰위치를 랜덤하게 결정, shipPos를 더해 글로벌 좌표계로
 function spawnMonsterOnEdge(angle) {
-  const radius = 200;
+  const radius = 1080 / 2;
   const angleRad = (angle * Math.PI) / 180;
  
   return { x: radius * Math.cos(angleRad) + shipPos.x, y: radius * Math.sin(angleRad) + shipPos.y};
@@ -53,8 +53,8 @@ function startSpawningMonsters() {
       setTimeout(spawnAtRandomInterval, nextSpawnTime);
     }
   
-    // Start the spawning loop
-    spawnAtRandomInterval();
+    // Start the spawning loop after 5s
+    setTimeout(spawnAtRandomInterval, 5000);
   }
 
 startSpawningMonsters();
@@ -86,6 +86,7 @@ setInterval(() => {
 
     const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
 
+    //(dx, dy)는 우주선 중심에서 몬스터를 향하는 단위벡터가 됨
     if (distanceToCenter !== 0) {
       dx /= distanceToCenter;
       dy /= distanceToCenter;
@@ -96,6 +97,9 @@ setInterval(() => {
       monster.zigzagDirection *= -1;
     }
 
+    //몬스터가 우주선에 점점 다가가도록
+    monster.x += (-dx) * monster.speed;
+    monster.y += (-dy) * monster.speed;
     //수직 벡터
     const perpDx = dy;
     const perpDy = -dx;
