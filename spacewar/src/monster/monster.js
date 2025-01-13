@@ -171,7 +171,7 @@ function GameMap() {
         // Send the movement update to the backend
         await axios.post('http://localhost:5000/api/monster/shift', {
           direction: Array.from(pressedKeys.current),
-          shiftAmount: 10,
+          shiftAmount: 20,
         });
       }
     }, 10);
@@ -229,9 +229,12 @@ function GameMap() {
     const animate = () => {
       context.clearRect(0, 0, canvas.width, canvas.height);
 
+      const centerX=canvas.width/2;
+      const centerY=canvas.height/2;
+
       monsters.forEach((monster) => {
         context.fillStyle = 'green';
-        context.fillRect(monster.x - offset.x, monster.y - offset.y, 20, 20);
+        context.fillRect(monster.x +centerX, monster.y+centerY, 20, 20);
       });
 
       requestAnimationFrame(animate);
