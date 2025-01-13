@@ -39,7 +39,7 @@ setInterval(() => {
 
   // 3. 모든 클라이언트에게 최신 상태를 브로드캐스트
   io.emit("updateGameState", { players, shipPos, weaponAngle, bullets });
-}, 15);
+}, 10);
 
 // 클라이언트가 소켓 연결을 맺으면
 io.on("connection", (socket) => {

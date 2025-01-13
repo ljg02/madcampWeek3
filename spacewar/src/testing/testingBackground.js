@@ -36,15 +36,19 @@ function World() {
   // 5) 우주선, 플레이어 크기
   // ---------------------------
   const SHIP_RADIUS = 150;   // 우주선 반지름
-  const PLAYER_RADIUS = 25;  // 내부 원 플레이어 반지름
+  const PLAYER_RADIUS = 15;  // 내부 원 플레이어 반지름
   const TURRET_WIDTH = 50;  //포탑 두께
   const TURRET_HEIGHT = 20; //포탑 길이
+  const BULLET_SPEED = 30;  //총알 속도
+  const BULLET_RADIUS = 5;  //총알 반지름
 
   // 화면 중앙(정중앙 픽셀 좌표)
   const [screenCenter, setScreenCenter] = useState({
     x: window.innerWidth / 2,
     y: window.innerHeight / 2,
   });
+
+  const canvasRef = useRef(null);
 
   // ---------------------------------------------------------
   // (A) 브라우저 창 크기 변화 감지 -> 화면 중앙 재계산
@@ -55,6 +59,11 @@ function World() {
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
       });
+      // canvas 크기도 다시 조정
+      if (canvasRef.current) {
+        canvasRef.current.width = window.innerWidth;
+        canvasRef.current.height = window.innerHeight;
+      }
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -88,7 +97,10 @@ function World() {
     };
   }, []);
 
-  //우주선 이동(방향키)
+  // ---------------------------------------------------------
+  // (C) 우주선 이동 (글로벌 좌표계)
+  //     - 방향키로 이동한다고 가정
+  // ---------------------------------------------------------
   useEffect(() => {
     if (!socket) return; // socket이 null이면 return
     const interval = setInterval(() => {
@@ -99,13 +111,12 @@ function World() {
   }, [socket]); // socket을 의존성 배열에 추가
 
   // ---------------------------------------------------------
-  // (C) 플레이어어 이동 (우주선 로컬 좌표계)
+  // (D) 플레이어 이동 (우주선 로컬 좌표계)
   //     - W,S,A,D로 이동한다고 가정
   // ---------------------------------------------------------
   useEffect(() => {
     playerPosRef.current = playerPos;
   }, [playerPos]);
-
   useEffect(() => {
     const interval = setInterval(() => {
       const keys = keysRef.current;
@@ -136,14 +147,8 @@ function World() {
     return () => clearInterval(interval);
   }, [socket]);
 
-//   useEffect(() => {
-//     if (!socket) return;
-//     // 내 플레이어 상태를 서버에 전송
-//     socket.emit("playerMove", playerPos);
-//   }, [playerPos, socket]);
-
   // ---------------------------------------------------------
-  // (D) 카메라 오프셋 계산
+  // (E) 카메라 오프셋 계산
   //     - 우주선을 화면 중앙에 고정시키기 위해
   //     - offset = shipPos - screenCenter
   // ---------------------------------------------------------
@@ -155,7 +160,7 @@ function World() {
   }, [shipPos, screenCenter]);
 
   // ---------------------------------------------------------
-  // (E) 마우스 움직임에 따라 무기(포탑) 각도 계산
+  // (F) 마우스 움직임에 따라 무기(포탑) 각도 계산
   // ---------------------------------------------------------
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -184,7 +189,7 @@ function World() {
   }, [socket]);
 
   // ---------------------------------------------------------
-  // (F) 마우스 클릭 -> 총알 발사 (월드 좌표)
+  // (G) 마우스 클릭 -> 총알 발사 (월드 좌표)
   // ---------------------------------------------------------
   useEffect(() => {
     const handleMouseDown = () => {
@@ -204,8 +209,8 @@ function World() {
         x: worldX,
         y: worldY,
         angleRad,
-        speed: 10,
-        radius: 5,
+        speed: BULLET_SPEED,
+        radius: BULLET_RADIUS,
         mileage: 0, //총알이 주행한 거리
       };
 
@@ -219,6 +224,7 @@ function World() {
     return () => window.removeEventListener("mousedown", handleMouseDown);
   }, [weaponAngle, shipPos, socket]);
 
+  //서버와 연결하고 매 프레임마다 객체들의 좌표 정보 받아오기
   useEffect(() => {
     // 1) 서버에 소켓 연결
     const newSocket = io(`${process.env.REACT_APP_BACKEND_URL}`, {
@@ -240,6 +246,48 @@ function World() {
   }, []);
 
   // ---------------------------------------------------------
+  // (I) Canvas 드로잉 로직 - 총알 그리기
+  // ---------------------------------------------------------
+  useEffect(() => {
+    let animationId;
+    const ctx = canvasRef.current?.getContext("2d");
+
+    // 캔버스가 없으면(draw할 수 없으면) 정지
+    if (!ctx) return;
+
+    const draw = () => {
+      // 1) 캔버스 초기화 (지우기)
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+      // 2) 총알 그리기
+      bullets.forEach((bullet) => {
+        // 캔버스 상 좌표 = bullet.x - cameraOffset.x, bullet.y - cameraOffset.y
+        const drawX = bullet.x - cameraOffset.x;
+        const drawY = bullet.y - cameraOffset.y;
+
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, bullet.radius, 0, 2 * Math.PI, false);
+        ctx.fillStyle = "yellow";
+        ctx.fill();
+      });
+
+      // (추가) 필요하다면 우주선, 플레이어도 여기서 그림
+      // 우주선을 캔버스에 그리려면, 우주선 중심/반지름 정보를 사용:
+      // - ctx.arc(shipX, shipY, SHIP_RADIUS, ...)
+
+      // 3) 다음 프레임 요청
+      animationId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    // cleanup
+    return () => {
+      cancelAnimationFrame(animationId);
+    };
+  }, [bullets, cameraOffset]);
+
+  // ---------------------------------------------------------
   // 렌더링
   // ---------------------------------------------------------
   return (
@@ -258,7 +306,23 @@ function World() {
         backgroundPosition: `${-cameraOffset.x}px ${-cameraOffset.y}px`,
       }}
     >
+      {/* <canvas> : 총알(및 기타 오브젝트) 드로잉 */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          // zIndex를 좀 높게 해주면,
+          // 배경보다 앞으로 그려질 수 있음
+          zIndex: 10,
+        }}
+        width={window.innerWidth}
+        height={window.innerHeight}
+      />
+
       {/* (1) 우주선 (큰 원) */}
+      {/* 사실상 화면 중심에 고정 */}
       <div
         style={{
           position: "absolute",
@@ -267,8 +331,12 @@ function World() {
           borderRadius: "50%",
           backgroundColor: "rgba(0,255,0,0.2)",
           border: "2px solid green",
-          left: shipPos.x - cameraOffset.x - SHIP_RADIUS,
-          top: shipPos.y - cameraOffset.y - SHIP_RADIUS,
+          left: 0,
+          top: 0,
+          transform: `translate(
+            ${shipPos.x - cameraOffset.x - SHIP_RADIUS}px,
+            ${shipPos.y - cameraOffset.y - SHIP_RADIUS}px
+          )`,
         }}
       >
         {/* (2) 우주선 내부 플레이어(빨간 원) */}
@@ -278,11 +346,13 @@ function World() {
             width: PLAYER_RADIUS * 2,
             height: PLAYER_RADIUS * 2,
             borderRadius: "50%",
-            backgroundColor: "red",
-            left: playerPos.x - PLAYER_RADIUS + SHIP_RADIUS,
-            top: playerPos.y - PLAYER_RADIUS + SHIP_RADIUS,
-            // 위 코드 해석:
-            // 우주선 내부 플레이어가 '우주선 중심'에 오도록 배치
+            backgroundColor: "pink",
+            left: 0,
+            top: 0,
+            transform: `translate(
+                ${playerPos.x - PLAYER_RADIUS + SHIP_RADIUS}px,
+                ${playerPos.y - PLAYER_RADIUS + SHIP_RADIUS}px
+              )`,
             // (shipPos.x - playerPos.x)는 우주선에 상대적인 플레이어의 위치
           }}
         />
@@ -291,23 +361,7 @@ function World() {
         <Turret angle={weaponAngle} shipRadius={SHIP_RADIUS} turretWidth={TURRET_WIDTH} turretHeight={TURRET_HEIGHT} />
       </div>
 
-      {/* (4) 총알 렌더링 (월드 좌표 -> 화면) */}
-      {bullets.map((bullet, i) => {
-        return (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              width: bullet.radius * 2,
-              height: bullet.radius * 2,
-              borderRadius: "50%",
-              backgroundColor: "yellow",
-              left: bullet.x - cameraOffset.x - bullet.radius,
-              top: bullet.y - cameraOffset.y - bullet.radius,
-            }}
-          />
-        );
-      })}
+      {/* 기존 총알 그리던 부분 */}
 
       {/* (5) GameMap 컴포넌트 (원하시는 방식으로 cameraOffset을 넘기면 됨) */}
       {/* 예: <GameMap offset={cameraOffset} /> */}
@@ -336,10 +390,16 @@ function Turret({ angle, shipRadius, turretWidth, turretHeight }) {
         height: `${turretHeight}px`,
         backgroundColor: "blue",
         // 우주선 중심에 맞추기(우주선 하위 컴포넌트이므로 우주선에 상대적인 위치로 설정)
-        left: shipRadius - turretWidth / 2 + turretX,
-        top: shipRadius - turretHeight / 2 + turretY,
+        left: 0,
+        top: 0,
         // 회전
-        transform: `rotate(${angle}deg)`,
+        transform: `
+          translate(
+            ${shipRadius - turretWidth / 2 + turretX}px,
+            ${shipRadius - turretHeight / 2 + turretY}px
+          )
+          rotate(${angle}deg)
+        `,
         transformOrigin: "center center",
       }}
     />
