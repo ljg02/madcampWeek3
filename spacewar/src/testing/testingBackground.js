@@ -32,6 +32,9 @@ function World() {
   // ---------------------------
   const [bullets, setBullets] = useState([]);
 
+  // 몬스터 목록
+  const [monsters, setMonsters] = useState([]);
+
   // ---------------------------
   // 5) 우주선, 플레이어 크기
   // ---------------------------
@@ -215,6 +218,7 @@ function World() {
       };
 
       //setBullets((prev) => [...prev, newBullet]);
+      console.log('monster: ', monsters);
       if(socket) {
         socket.emit("shootBullet", newBullet);
       }
@@ -238,6 +242,7 @@ function World() {
       setPlayerPos(data.players[newSocket.id]);
       setWeaponAngle(data.weaponAngle);
       setBullets(data.bullets);
+      setMonsters(data.monsters);
     });
 
     return () => {
@@ -246,7 +251,7 @@ function World() {
   }, []);
 
   // ---------------------------------------------------------
-  // (I) Canvas 드로잉 로직 - 총알 그리기
+  // (H) Canvas 드로잉 로직 - 총알 그리기
   // ---------------------------------------------------------
   useEffect(() => {
     let animationId;
@@ -269,6 +274,15 @@ function World() {
         ctx.arc(drawX, drawY, bullet.radius, 0, 2 * Math.PI, false);
         ctx.fillStyle = "yellow";
         ctx.fill();
+      });
+
+      // 3) 몬스터 그리기
+      monsters.forEach((monster) => {
+        const drawX = monster.x - cameraOffset.x;
+        const drawY = monster.y - cameraOffset.y;
+
+        ctx.fillStyle = 'green';
+        ctx.fillRect(drawX, drawY, 20, 20);
       });
 
       // (추가) 필요하다면 우주선, 플레이어도 여기서 그림
