@@ -174,7 +174,7 @@ function GameMap() {
           shiftAmount: 10,
         });
       }
-    }, 10);
+    }, 15);
 
     return () => clearInterval(moveInterval);
   }, []);
@@ -201,7 +201,7 @@ function GameMap() {
 
       const updatedMonsters = await response.json();
       setMonsters(updatedMonsters);
-    }, 10);
+    }, 15);
 
     return () => clearInterval(interval);
   }, []);
@@ -244,7 +244,7 @@ function GameMap() {
     <div>
       <canvas
         ref={canvasRef}
-        style={{ border: '1px solid black' }}
+        style={{ border: '0px solid black' }}
       ></canvas>
     </div>
   );
