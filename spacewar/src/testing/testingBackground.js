@@ -218,7 +218,6 @@ function World() {
       };
 
       //setBullets((prev) => [...prev, newBullet]);
-      console.log('monster: ', monsters);
       if(socket) {
         socket.emit("shootBullet", newBullet);
       }
@@ -278,11 +277,11 @@ function World() {
 
       // 3) 몬스터 그리기
       monsters.forEach((monster) => {
-        const drawX = monster.x - cameraOffset.x;
-        const drawY = monster.y - cameraOffset.y;
+        const drawX = monster.x - cameraOffset.x - monster.radius;
+        const drawY = monster.y - cameraOffset.y - monster.radius;
 
         ctx.fillStyle = 'green';
-        ctx.fillRect(drawX, drawY, 20, 20);
+        ctx.fillRect(drawX, drawY, monster.radius*2, monster.radius*2);
       });
 
       // (추가) 필요하다면 우주선, 플레이어도 여기서 그림

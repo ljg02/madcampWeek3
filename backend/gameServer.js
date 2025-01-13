@@ -18,12 +18,18 @@ let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
 let monsters = [];
 
+//몬스터 크기기
+const MONSTER_RADIUS = 10;
+
 // 우주선에 상대적으로 스폰위치를 랜덤하게 결정, shipPos를 더해 글로벌 좌표계로
 function spawnMonsterOnEdge(angle) {
   const radius = 1080 / 2;
   const angleRad = (angle * Math.PI) / 180;
  
-  return { x: radius * Math.cos(angleRad) + shipPos.x, y: radius * Math.sin(angleRad) + shipPos.y};
+  return {
+    x: radius * Math.cos(angleRad) + shipPos.x,
+    y: radius * Math.sin(angleRad) + shipPos.y
+  };
 }
 
 function startSpawningMonsters() {
@@ -38,6 +44,7 @@ function startSpawningMonsters() {
         zigzagDirection: Math.random() < 0.5 ? -1 : 1,
         frameInterval: Math.floor(Math.random() * 50) + 20,
         frameCount: 0,
+        radius: MONSTER_RADIUS,
       };
   
       // Add the new monster to the array
@@ -59,7 +66,7 @@ function startSpawningMonsters() {
 
 startSpawningMonsters();
 
-// 주기적으로 총알 이동 & 게임 상태 갱신(서버 사이드 게임 루프 예시)
+// 주기적으로 총알 이동 & 몬스터 이동 & 게임 상태 갱신(서버 사이드 게임 루프 예시)
 setInterval(() => {
   // 1. 총알 이동
   bullets = bullets.map((b) => {
@@ -72,14 +79,9 @@ setInterval(() => {
   });
 
   // 2. 1000px를 날아간 총알은 제거
-  bullets = bullets.filter((b) => {
-    if (b.mileage > 1000) {
-      return false;
-    }
-    return true;
-  })
+  bullets = bullets.filter((b) => b.mileage < 1000);
 
-  // 몬스터 움직임에 따른 위치 계산
+  // 3. 몬스터 움직임에 따른 위치 계산
   monsters = monsters.map((monster) => {
     let dx= monster.x - shipPos.x;
     let dy= monster.y - shipPos.y;
@@ -100,6 +102,7 @@ setInterval(() => {
     //몬스터가 우주선에 점점 다가가도록
     monster.x += (-dx) * monster.speed;
     monster.y += (-dy) * monster.speed;
+
     //수직 벡터
     const perpDx = dy;
     const perpDy = -dx;
@@ -113,6 +116,52 @@ setInterval(() => {
 
     return monster;
   });
+
+  // 4. **충돌 검사(총알 vs 몬스터)**
+  //    - 원형 충돌: 거리 <= (bullet.radius + MONSTER_RADIUS)
+  //    - 충돌한 총알/몬스터는 제거
+  let newMonsters = [];
+  // 어떤 총알이 충돌했는지 추적 (인덱스)
+  let collidedBulletIndexes = new Set();
+
+  monsters.forEach((monster) => {
+    let isMonsterHit = false;
+
+    // 총알 배열을 순회하여 충돌 여부 확인
+    for (let i = 0; i < bullets.length; i++) {
+      if (collidedBulletIndexes.has(i)) {
+        // 이미 다른 몬스터와 충돌로 제거 예정인 총알이면 건너뜀
+        continue;
+      }
+
+      const b = bullets[i];
+      const dx = b.x - monster.x;
+      const dy = b.y - monster.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist <= (b.radius + MONSTER_RADIUS)) {
+        // 충돌 발생
+        isMonsterHit = true;
+        // 해당 총알도 제거 표시
+        collidedBulletIndexes.add(i);
+        // 이번 monster도 루프 중단
+        break;
+      }
+    }
+
+    // 충돌 안 된 몬스터만 newMonsters에 넣음
+    if (!isMonsterHit) {
+      newMonsters.push(monster);
+    }
+  });
+
+  // 충돌되지 않은 총알만 남김
+  let newBullets = bullets.filter((_, index) => {
+    return !collidedBulletIndexes.has(index);
+  });
+
+  monsters = newMonsters;
+  bullets = newBullets;
 
   // 3. 모든 클라이언트에게 최신 상태를 브로드캐스트
   io.emit("updateGameState", { players, shipPos, weaponAngle, bullets, monsters });
