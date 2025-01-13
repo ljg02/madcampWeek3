@@ -12,7 +12,7 @@ const io = new Server(server, {
 });
 
 // --- 게임 월드 상태 예시 ---
-let players = {}; // 플레이어 목록 { socket.id: { playerPos, ... } }
+let players = {}; // 플레이어 목록 { socket.id: { x: 0, y: 0 } }
 let shipPos = { x: 0, y: 0};  //우주선 위치 { x: 0, y: 0 }
 let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
@@ -46,17 +46,15 @@ io.on("connection", (socket) => {
   console.log("새로운 유저 연결:", socket.id);
 
   // 1) 플레이어 등록
-  players[socket.id] = {
-    playerPos: { x: 0, y: 0 },
-    // 필요한 초기값
-  };
+  players[socket.id] = { x: 0, y: 0 };
 
   // 2) 클라이언트로부터 상태 업데이트 받기
   //    예: 플레이어가 키/마우스 입력을 통해 위치나 각도를 바꿨을 때 emit("playerMove", ...)
-  socket.on("playerMove", (data) => {
+  socket.on("playerMove", (playerPos) => {
     // data = { playerPos, } (프론트엔드에서 보내준다고 가정)
     if (players[socket.id]) {
-      players[socket.id].playerPos = data.playerPos;
+      players[socket.id].x = playerPos.x;
+      players[socket.id].y = playerPos.y;
     }
     // 이후 매 프레임마다 setInterval로 updateGameState를 보내므로,
     // 여기서는 따로 emit하지 않아도 됨(선택사항)

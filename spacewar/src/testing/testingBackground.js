@@ -12,6 +12,7 @@ function World() {
   // ---------------------------
   // 초기에 (0,0)을 사용
   const [playerPos, setPlayerPos] = useState({ x: 0, y: 0 });
+  const playerPosRef = useRef(playerPos);
 
   // ---------------------------
   // 2) 카메라 오프셋(화면 왼쪽 위의 글로벌 좌표, 화면 중심에 우주선이 위치)
@@ -102,9 +103,14 @@ function World() {
   //     - W,S,A,D로 이동한다고 가정
   // ---------------------------------------------------------
   useEffect(() => {
+    playerPosRef.current = playerPos;
+  }, [playerPos]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      let { x, y } = playerPos;
-      const step = 3;
+      const keys = keysRef.current;
+      let { x, y } = playerPosRef.current;
+      const step = 5;
       // WASD
       if (keys["w"] || keys["W"]) y -= step;
       if (keys["s"] || keys["S"]) y += step;
@@ -121,11 +127,20 @@ function World() {
         y *= scale;
       }
 
-      setPlayerPos({ x, y });
+      //setPlayerPos({ x, y });
+      if(socket) {
+        socket.emit("playerMove", { x, y });
+      }
     }, 15);
 
     return () => clearInterval(interval);
-  }, [keys, playerPos]);
+  }, [socket]);
+
+//   useEffect(() => {
+//     if (!socket) return;
+//     // 내 플레이어 상태를 서버에 전송
+//     socket.emit("playerMove", playerPos);
+//   }, [playerPos, socket]);
 
   // ---------------------------------------------------------
   // (D) 카메라 오프셋 계산
@@ -214,7 +229,7 @@ function World() {
     // 2) 매 프레임마다 서버가 보내주는 'updateGameState' 이벤트 수신
     newSocket.on("updateGameState", (data) => {
       setShipPos(data.shipPos);
-      //setPlayerPos(data.players.playerPos);
+      setPlayerPos(data.players[newSocket.id]);
       setWeaponAngle(data.weaponAngle);
       setBullets(data.bullets);
     });
@@ -223,17 +238,6 @@ function World() {
       newSocket.disconnect();
     };
   }, []);
-
-  //useEffect(() => { console.log(bullets); }, [bullets])
-
-  // 예: 키보드/마우스 입력 후 내 상태 변경 시 서버에 emit
-  useEffect(() => {
-    if (!socket) return;
-    // 내 플레이어 상태를 서버에 전송
-    socket.emit("playerMove", {
-      playerPos,
-    });
-  }, [playerPos, socket]);
 
   // ---------------------------------------------------------
   // 렌더링
