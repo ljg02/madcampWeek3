@@ -308,7 +308,7 @@ function World() {
           if(socket) {
             socket.emit("shootBullet", newBullet);
           }
-          console.log("fired bullet from gun control");
+          //console.log("fired bullet from gun control");
           break;
         case "missile":
           const newMissile={
@@ -322,7 +322,7 @@ function World() {
           if(socket){
             socket.emit("launchMissile",newMissile);
           }
-          console.log("fired missile from missiel control");
+          //console.log("fired missile from missiel control");
           break;
       }
     };
@@ -356,6 +356,7 @@ function World() {
       setBullets(data.bullets);
       setMissiles(data.missiles);
       setMonsters(data.monsters);
+      setScore(data.score);
     });
 
     // 몬스터 피격 이벤트 수신
@@ -395,8 +396,9 @@ function World() {
     });
 
     // 게임오버 이벤트 수신
-    newSocket.on("gameover", () => {
-        navigate("/gameover", { state: { score: score } });
+    newSocket.on("gameover", (finalScore) => {
+        console.log("client score: ", finalScore);
+        navigate("/gameover", { state: { score: finalScore } });
     })
 
     return () => {
@@ -518,6 +520,7 @@ function World() {
         ctx.stroke();
 
         ctx.fillStyle="yellow";
+        ctx.font = "12px Orbitron, sans-serif"; // 커스텀 폰트 사용
         ctx.fillText(room.type, drawX-10, drawY-room.radius -5);
       });
       
@@ -578,9 +581,9 @@ function World() {
     //   ctx.arc(drawShipX, drawShipY, SHIP_RADIUS, 0, 2*Math.PI);
     //   ctx.fill();
 
-      // 우주선 hp
+      // 6) 우주선 hp
       ctx.fillStyle="red";
-      const hpBarWidth=(ship.hp/10)*(ship.radius*2);
+      const hpBarWidth=(ship.hp/5)*(ship.radius*2);
       ctx.fillRect(drawShipX-ship.radius, drawShipY+ship.radius+10, hpBarWidth, 10);
 
       // 우주선 피격 이펙트 그리기
@@ -599,11 +602,19 @@ function World() {
         }
       });
 
+      // 7) Score 표시 (왼쪽 위)
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; // 반투명 배경
+      ctx.fillRect(20, 20, 150, 40); // 배경 사각형
+
+      ctx.fillStyle = "white"; // 텍스트 색상
+      ctx.font = "20px Orbitron, sans-serif"; // 커스텀 폰트 사용
+      ctx.fillText(`Score: ${score}`, 30, 45); // 텍스트 위치
+
       // (추가) 필요하다면 우주선, 플레이어도 여기서 그림
       // 우주선을 캔버스에 그리려면, 우주선 중심/반지름 정보를 사용:
       // - ctx.arc(shipX, shipY, SHIP_RADIUS, ...)
 
-      // 3) 다음 프레임 요청
+      // 8) 다음 프레임 요청
       animationId = requestAnimationFrame(draw);
     };
 
@@ -626,7 +637,7 @@ function World() {
         const dist=Math.sqrt(dx*dx+dy*dy);
 
         if(dist<=room.radius && !currentControl){
-          console.log(`Press Q to acces the ${room.type} control room.`);
+          //console.log(`Press Q to acces the ${room.type} control room.`);
         }
       });
     };
@@ -648,7 +659,7 @@ function World() {
 
           if(dist<=room.radius){
             setCurrentControl(room.type);
-            console.log(`Entered the ${room.type} control room`);
+            //console.log(`Entered the ${room.type} control room`);
             if(socket){
               socket.emit("acquireControl",{controlType: room.type});
             }

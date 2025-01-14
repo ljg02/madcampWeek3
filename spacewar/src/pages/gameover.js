@@ -35,7 +35,15 @@ function Gameover() {
         >
             <h1
                 style={{
-                    fontStyle: "bord",
+                    fontStyle: "bold",
+                    color: "white",
+                    marginBottom: "20px",
+                }}
+            >
+                GAME OVER
+            </h1>
+            <h1
+                style={{
                     color: "white",
                 }}
             >

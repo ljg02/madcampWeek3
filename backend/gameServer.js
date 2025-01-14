@@ -14,13 +14,14 @@ const io = new Server(server, {
 // --- 게임 월드 상태 예시 ---
 let players = {}; // 플레이어 목록 { socket.id: { x: 0, y: 0 } }
 let missileAngle = 0;
-let ship = { x: 0, y: 0, hp: 10, radius: 150};   //우주선 상태(위치, hp)
+let ship = { x: 0, y: 0, hp: 5, radius: 150};   //우주선 상태(위치, hp)
 let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
 let missiles=[];
 let monsters = [];
-
 let controlAssignments={};
+
+let score = 0;  //점수(모든 플레이어가 공유)
 
 //몬스터 크기
 const MONSTER_RADIUS = 10;
@@ -69,7 +70,23 @@ function startSpawningMonsters() {
   
     // Start the spawning loop after 3s
     setTimeout(spawnAtRandomInterval, 3000);
-  }
+}
+
+function resetGameState() {
+    players = {};
+    ship = { x: 0, y: 0, hp: 5, radius: 150 };
+    weaponAngle = 0;
+    missileAngle = 0;
+    bullets = [];
+    missiles = [];
+    monsters = [];
+    controlAssignments = {};
+    score = 0;
+    
+    // 만약 다시 몬스터 스폰도 처음부터 시작하고 싶다면,
+    // startSpawningMonsters()를 다시 호출하거나,
+    // spawn 타이머 등을 초기화하는 로직을 넣어도 됨
+}
 
 // 주기적으로 총알 이동 & 몬스터 이동 & 게임 상태 갱신(서버 사이드 게임 루프 예시)
 setInterval(() => {
@@ -186,6 +203,7 @@ setInterval(() => {
       const m=missiles[j];
       const mx=m.x-monster.x;
       const my=m.y-monster.y;
+      //몬스터와 미사일 간의 거리
       const mist=Math.sqrt(mx*mx+my*my);
 
       if(mist<=(m.radius+monster.radius)){
@@ -197,6 +215,8 @@ setInterval(() => {
         monster.hp-=5;
         if(monster.hp<=0){
           isMonsterDead=true;
+          // 처치 몬스터 정보 저장
+          deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
         }
         break;
       }
@@ -249,11 +269,13 @@ setInterval(() => {
   // 6. 처치 정보 브로드캐스트
   deadMonster.forEach((monster) => {
     io.emit("monsterDead", monster); // 각 처치에 대해 이벤트 전송
+    score += 10;
   });
 
   // 7. 게임 오버 브로드캐스트
   if(isGameOver) {
-    io.emit("gameover");
+    io.emit("gameover", score);
+    resetGameState();
   }
 
   // 8. 모든 클라이언트에게 최신 상태를 브로드캐스트
@@ -266,6 +288,7 @@ setInterval(() => {
     bullets,
     missiles, 
     monsters,
+    score,
    });
 }, 10);
 
@@ -326,10 +349,8 @@ io.on("connection", (socket) => {
   socket.on("turretMove", (data) => {
     // weaponAngle = newWeaponAngle
     if(data.type==="gun"){
-      console.log("gun turret moving");
       weaponAngle=data.angle;
     }else if(data.type==="missile"){
-      console.log("turret moving");
       missileAngle=data.angle;
     }
   });
@@ -358,12 +379,12 @@ io.on("connection", (socket) => {
   //5) 컨트롤 잡기
   socket.on("acquireControl",(data)=>{
     controlAssignments[socket.id]=data.controlType;
-    console.log(`socket ${socket.id} is controlling: ${data.controlType}`);
+    //console.log(`socket ${socket.id} is controlling: ${data.controlType}`);
   });
 
   //6) 컨트롤 놓기기
   socket.on("releaseControl",()=>{
-    console.log(`socket ${socket.id} released control`);
+    //console.log(`socket ${socket.id} released control`);
     controlAssignments[socket.id]=null;
   })
 
