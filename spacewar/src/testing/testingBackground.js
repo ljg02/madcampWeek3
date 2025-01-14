@@ -49,8 +49,7 @@ function World() {
   // ---------------------------
   const [missiles, setMissiles]=useState([]);
 
-  // 몬스터 목록
-  const [monsters, setMonsters] = useState([]);
+  // 몬스터 이미지 목록
   const monsterImages=[monster1, monster2, monster3, monster4, monster5, monster6, monster7];
 
   const loadMonsterImages=()=>{
