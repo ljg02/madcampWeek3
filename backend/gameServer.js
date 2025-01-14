@@ -13,13 +13,13 @@ const io = new Server(server, {
 
 // --- 게임 월드 상태 예시 ---
 let players = {}; // 플레이어 목록 { socket.id: { x: 0, y: 0 } }
-let shipPos = { x: 0, y: 0};  //우주선 위치 { x: 0, y: 0 }
+let ship = { x: 0, y: 0, hp: 10};   //우주선 상태(위치, hp)
 let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
 let missiles=[];
 let monsters = [];
 
-//몬스터 크기기
+//몬스터 크기
 const MONSTER_RADIUS = 10;
 const MISSILE_BLAST_RADIUS=100;
 const MISSILE_DAMAGE=5;
@@ -30,8 +30,8 @@ function spawnMonsterOnEdge(angle) {
   const angleRad = (angle * Math.PI) / 180;
  
   return {
-    x: radius * Math.cos(angleRad) + shipPos.x,
-    y: radius * Math.sin(angleRad) + shipPos.y
+    x: radius * Math.cos(angleRad) + ship.x,
+    y: radius * Math.sin(angleRad) + ship.y
   };
 }
 
@@ -97,8 +97,8 @@ setInterval(() => {
 
   // 3. 몬스터 움직임에 따른 위치 계산
   monsters = monsters.map((monster) => {
-    let dx= monster.x - shipPos.x;
-    let dy= monster.y - shipPos.y;
+    let dx= monster.x - ship.x;
+    let dy= monster.y - ship.y;
 
     const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
 
@@ -231,7 +231,7 @@ setInterval(() => {
   //io.emit("updateGameState", { players, shipPos, weaponAngle, bullets, monsters });
   io.emit("updateGameState", { 
     players, 
-    shipPos, 
+    ship, 
     weaponAngle, 
     bullets,
     missiles, 
@@ -277,7 +277,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("spaceShipMove", (keys) => {
-    let { x, y } = shipPos;
+    let x = ship.x;
+    let y = ship.y;
     const step = 10;
     // WASD
     if (keys['ArrowUp']) y -= step;
@@ -285,7 +286,8 @@ io.on("connection", (socket) => {
     if (keys['ArrowLeft']) x -= step;
     if (keys['ArrowRight']) x += step;
 
-    shipPos = { x, y };
+    ship.x = x;
+    ship.y = y;
   });
 
   socket.on("turretMove", (newWeaponAngle) => {

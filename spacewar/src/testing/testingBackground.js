@@ -15,7 +15,7 @@ import { useLocation } from "react-router-dom";
 function World() {
   const [socket, setSocket] = useState(null);
   //0) 우주선 월드 좌표
-  const [shipPos, setShipPos] = useState({ x: 0, y: 0});
+  const [ship, setShip] = useState({ x: 0, y: 0, hp: 10});
 
   // ---------------------------
   // 1) 플레이어 (우주선 로컬 좌표계)
@@ -198,10 +198,10 @@ function World() {
   // ---------------------------------------------------------
   useEffect(() => {
     setCameraOffset({
-      x: shipPos.x - screenCenter.x,
-      y: shipPos.y - screenCenter.y,
+      x: ship.x - screenCenter.x,
+      y: ship.y - screenCenter.y,
     });
-  }, [shipPos, screenCenter]);
+  }, [ship, screenCenter]);
 
   // ---------------------------------------------------------
   // (F) 마우스 움직임에 따라 무기(포탑) 각도 계산
@@ -250,8 +250,8 @@ function World() {
       const missileX = turretDist * Math.cos(angleRad);
       const missileY = turretDist * Math.sin(angleRad);
 
-      const worldX = shipPos.x + missileX;
-      const worldY = shipPos.y + missileY;
+      const worldX = ship.x + missileX;
+      const worldY = ship.y + missileY;
 
       // 총알의 발사 당시 글로벌 좌표
       const newMissile = {
@@ -280,8 +280,8 @@ function World() {
 
       // bulletX, bulletY는 "우주선 중심 (0,0) 기준"
       // 우주선 월드 좌표가 (uwx, uwy)라면:
-      const worldX = shipPos.x + bulletX;
-      const worldY = shipPos.y + bulletY;
+      const worldX = ship.x + bulletX;
+      const worldY = ship.y + bulletY;
 
       // 총알의 발사 당시 글로벌 좌표
       const newBullet = {
@@ -304,7 +304,7 @@ function World() {
     return () => {
       window.removeEventListener("mousedown", handleMouseDown);
     };
-  }, [weaponAngle, shipPos, socket]);
+  }, [weaponAngle, ship, socket]);
 
   //서버와 연결하고 매 프레임마다 객체들의 좌표 정보 받아오기
   useEffect(() => {
@@ -321,7 +321,7 @@ function World() {
 
     // 3) 매 프레임마다 서버가 보내주는 'updateGameState' 이벤트 수신
     newSocket.on("updateGameState", (data) => {
-      setShipPos(data.shipPos);
+      setShip(data.ship);
       setPlayerPos(data.players[newSocket.id]);
       setPlayers(data.players);
       setWeaponAngle(data.weaponAngle);
@@ -486,8 +486,8 @@ function World() {
 
       // 4) 플레이어 그리기
       Object.values(players).forEach((player) => {
-        const drawX = player.x + shipPos.x - cameraOffset.x;
-        const drawY = player.y + shipPos.y - cameraOffset.y;
+        const drawX = player.x + ship.x - cameraOffset.x;
+        const drawY = player.y + ship.y - cameraOffset.y;
 
         ctx.fillStyle = player.color;
         ctx.beginPath();
@@ -575,8 +575,8 @@ function World() {
           left: 0,
           top: 0,
           transform: `translate(
-            ${shipPos.x - cameraOffset.x - SHIP_RADIUS}px,
-            ${shipPos.y - cameraOffset.y - SHIP_RADIUS}px
+            ${ship.x - cameraOffset.x - SHIP_RADIUS}px,
+            ${ship.y - cameraOffset.y - SHIP_RADIUS}px
           )`,
         }}
       >
