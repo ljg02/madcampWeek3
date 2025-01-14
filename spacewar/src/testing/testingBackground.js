@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
+
 import GameMap from "../monster/monster.js";
 import monster1 from "../spacemonster1.png";
 import monster2 from "../spacemonster2.png";
@@ -8,6 +9,8 @@ import monster4 from "../spacemonster4.png";
 import monster5 from "../spacemonster5.png";
 import monster6 from "../spacemonster6.png";
 import monster7 from "../spacemonster7.png";
+
+import { useLocation } from "react-router-dom";
 
 function World() {
   const [socket, setSocket] = useState(null);
@@ -20,6 +23,8 @@ function World() {
   // 초기에 (0,0)을 사용
   const [playerPos, setPlayerPos] = useState({ x: 0, y: 0 });
   const playerPosRef = useRef(playerPos);
+  // 모든 플레이어
+  const [players, setPlayers] = useState({});
 
   // ---------------------------
   // 2) 카메라 오프셋(화면 왼쪽 위의 글로벌 좌표, 화면 중심에 우주선이 위치)
@@ -40,8 +45,8 @@ function World() {
   // ---------------------------
   const [bullets, setBullets] = useState([]);
 
-   // ---------------------------
-  //  미사일일 목록(각 총알의 글로벌 좌표)
+  // ---------------------------
+  //  미사일 목록(각 총알의 글로벌 좌표)
   // ---------------------------
   const [missiles, setMissiles]=useState([]);
 
@@ -70,6 +75,11 @@ function World() {
     const images=loadMonsterImages();
   },[]);
 
+  // 몬스터 목록(각 몬스터들의 글로벌 좌표)
+  const [monsters, setMonsters] = useState([]);
+  // 몬스터 처치 이펙트 상태
+  const [monsterDead, setMonsterDead] = useState([]);
+
   // ---------------------------
   // 5) 우주선, 플레이어 크기
   // ---------------------------
@@ -88,6 +98,10 @@ function World() {
 
   const canvasRef=useRef(null);
 
+
+  const location = useLocation();
+  // 메인 페이지에서 넘어온 name, color
+  const { name, color } = location.state || { name: "Unknown", color: "#ff0000" };
 
   // ---------------------------------------------------------
   // (A) 브라우저 창 크기 변화 감지 -> 화면 중앙 재계산
@@ -317,10 +331,16 @@ function World() {
     });
     setSocket(newSocket);
 
-    // 2) 매 프레임마다 서버가 보내주는 'updateGameState' 이벤트 수신
+    // 2) 연결되면 이름, 색상 정보를 서버에 보냄
+    newSocket.on("connect", () => {
+        newSocket.emit("joinGame", { name, color });
+      });
+
+    // 3) 매 프레임마다 서버가 보내주는 'updateGameState' 이벤트 수신
     newSocket.on("updateGameState", (data) => {
       setShipPos(data.shipPos);
       setPlayerPos(data.players[newSocket.id]);
+      setPlayers(data.players);
       setWeaponAngle(data.weaponAngle);
       setMissileAngle(data.missileAngle);
       setBullets(data.bullets);
@@ -328,9 +348,33 @@ function World() {
       setMonsters(data.monsters);
     });
 
+    // 몬스터 폭발 이벤트 수신
+    newSocket.on("monsterDead", (monsterDeadEffect) => {
+        const newEffect = {
+          x: monsterDeadEffect.x,
+          y: monsterDeadEffect.y,
+          startTime: Date.now(),
+          duration: 500, // 폭발 이펙트 지속 시간 (밀리초 단위)
+          radius: monsterDeadEffect.radius,
+        };
+        setMonsterDead((prev) => [...prev, newEffect]);
+      });
+
     return () => {
       newSocket.disconnect();
     };
+  }, []);
+
+  // 수명이 다한 몬스터 폭발 이펙트 제거
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setMonsterDead((prev) =>
+        prev.filter((monsterDeadEffect) => now - monsterDeadEffect.startTime < monsterDeadEffect.duration)
+      );
+    }, 100);
+
+    return () => clearInterval(interval);
   }, []);
 
   // ---------------------------------------------------------
@@ -429,6 +473,39 @@ function World() {
 
         ctx.fillStyle="yellow";
         ctx.fillText(room.type, drawX-10, drawY-room.radius -5);
+      });
+
+      // 몬스터 폭발 이펙트 그리기
+      console.log(monsterDead);
+      monsterDead.forEach((monsterDeadEffect) => {
+        const drawX = monsterDeadEffect.x - cameraOffset.x - monsterDeadEffect.radius;
+        const drawY = monsterDeadEffect.y - cameraOffset.y - monsterDeadEffect.radius;
+        const progress = (Date.now() - monsterDeadEffect.startTime) / monsterDeadEffect.duration;
+        if (progress < 1) {
+          const alpha = (1 - progress)*0.8; // 점점 투명해짐
+          const size = monsterDeadEffect.radius * 2 + progress * 10; // 점점 커짐
+
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255, 165, 0, ${alpha})`; // 주황색
+          ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      });
+
+      // 4) 플레이어 그리기
+      Object.values(players).forEach((player) => {
+        const drawX = player.x + shipPos.x - cameraOffset.x;
+        const drawY = player.y + shipPos.y - cameraOffset.y;
+
+        ctx.fillStyle = player.color;
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, PLAYER_RADIUS, 0, 2*Math.PI);
+        ctx.fill();
+
+        // 이름 표시
+        ctx.fillStyle = "#fff";
+        ctx.font = "14px Arial";
+        ctx.fillText(player.name, drawX - 10, drawY - 20); 
       });
 
       // (추가) 필요하다면 우주선, 플레이어도 여기서 그림
@@ -553,13 +630,13 @@ function World() {
         }}
       >
         {/* (2) 우주선 내부 플레이어(빨간 원) */}
-        <div
+        {/* <div
           style={{
             position: "absolute",
             width: PLAYER_RADIUS * 2,
             height: PLAYER_RADIUS * 2,
             borderRadius: "50%",
-            backgroundColor: "pink",
+            backgroundColor: playerPos.color || "pink",
             left: 0,
             top: 0,
             transform: `translate(
@@ -568,7 +645,7 @@ function World() {
               )`,
             // (shipPos.x - playerPos.x)는 우주선에 상대적인 플레이어의 위치
           }}
-        />
+        /> */}
 
         {/* (3) 우주선 표면 포탑 */}
         <Turret angle={weaponAngle} shipRadius={SHIP_RADIUS} turretWidth={TURRET_WIDTH} turretHeight={TURRET_HEIGHT} />
@@ -576,10 +653,6 @@ function World() {
       </div>
 
       {/* 기존 총알 그리던 부분 */}
-
-      {/* (5) GameMap 컴포넌트 (원하시는 방식으로 cameraOffset을 넘기면 됨) */}
-      {/* 예: <GameMap offset={cameraOffset} /> */}
-      {/* <GameMap offset={cameraOffset} /> */}
     </div>
   );
 }
