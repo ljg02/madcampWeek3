@@ -59,6 +59,10 @@ function startSpawningMonsters() {
         frameCount: 0,
         radius: MONSTER_RADIUS,
         hp: 3,
+        vx:0,
+        vy: 0,
+        state: "approach",
+        bounceTimer:0,
       };
   
       // Add the new monster to the array
@@ -80,7 +84,7 @@ function startSpawningMonsters() {
 
 function resetGameState() {
     players = {};
-    ship = { x: 0, y: 0, hp: 5, radius: 150 };
+    ship = { x: 0, y: 0, hp: 10, radius: 150 };
     weaponAngle = 0;
     missileAngle = 0;
     bullets = [];
@@ -123,36 +127,89 @@ setInterval(() => {
 
   // 3. 몬스터 움직임에 따른 위치 계산
   monsters = monsters.map((monster) => {
-    let dx= monster.x - ship.x;
-    let dy= monster.y - ship.y;
 
-    const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
+    if(monster.state==="approach"){
+      let dx=monster.x-ship.x;
+      let dy=monster.y-ship.y;
+      let dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist!==0){
+        dx/=dist;
+        dy/=dist;
+      }
+      monster.x-=dx*monster.speed;
+      monster.y-=dy*monster.speed;
 
-    //(dx, dy)는 우주선 중심에서 몬스터를 향하는 단위벡터가 됨
-    if (distanceToCenter !== 0) {
-      dx /= distanceToCenter;
-      dy /= distanceToCenter;
+      const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
+
+      //(dx, dy)는 우주선 중심에서 몬스터를 향하는 단위벡터가 됨
+      if (distanceToCenter !== 0) {
+        dx /= distanceToCenter;
+        dy /= distanceToCenter;
+      }
+  
+      monster.frameCount++;
+      if (monster.frameCount % 30 === 0) {
+        monster.zigzagDirection *= -1;
+      }
+  
+      //몬스터가 우주선에 점점 다가가도록
+      monster.x += (-dx) * monster.speed;
+      monster.y += (-dy) * monster.speed;
+  
+      //수직 벡터
+      const perpDx = dy;
+      const perpDy = -dx;
+  
+      //우주선-몬스터를 잇는 직선에 수직으로 진동하도록
+      const zigzagX = perpDx * monster.zigzagAmplitude * monster.zigzagDirection;
+      const zigzagY = perpDy * monster.zigzagAmplitude * monster.zigzagDirection;
+  
+      monster.x += zigzagX * 0.1;
+      monster.y += zigzagY * 0.1;
+
     }
+    else if(monster.state==="bounce"){
 
-    monster.frameCount++;
-    if (monster.frameCount % 30 === 0) {
-      monster.zigzagDirection *= -1;
+      monster.x+=monster.vx;
+      monster.y+=monster.vy;
+
+      monster.bounceTimer--;
+      if(monster.bounceTimer<=0){
+        monster.state="approach";
+        monster.vx=0;
+        monster.vy=0;
+      }
     }
+    // let dx= monster.x - ship.x;
+    // let dy= monster.y - ship.y;
 
-    //몬스터가 우주선에 점점 다가가도록
-    monster.x += (-dx) * monster.speed;
-    monster.y += (-dy) * monster.speed;
+    // const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
 
-    //수직 벡터
-    const perpDx = dy;
-    const perpDy = -dx;
+    // //(dx, dy)는 우주선 중심에서 몬스터를 향하는 단위벡터가 됨
+    // if (distanceToCenter !== 0) {
+    //   dx /= distanceToCenter;
+    //   dy /= distanceToCenter;
+    // }
 
-    //우주선-몬스터를 잇는 직선에 수직으로 진동하도록
-    const zigzagX = perpDx * monster.zigzagAmplitude * monster.zigzagDirection;
-    const zigzagY = perpDy * monster.zigzagAmplitude * monster.zigzagDirection;
+    // monster.frameCount++;
+    // if (monster.frameCount % 30 === 0) {
+    //   monster.zigzagDirection *= -1;
+    // }
 
-    monster.x += zigzagX * 0.1;
-    monster.y += zigzagY * 0.1;
+    // //몬스터가 우주선에 점점 다가가도록
+    // monster.x += (-dx) * monster.speed;
+    // monster.y += (-dy) * monster.speed;
+
+    // //수직 벡터
+    // const perpDx = dy;
+    // const perpDy = -dx;
+
+    // //우주선-몬스터를 잇는 직선에 수직으로 진동하도록
+    // const zigzagX = perpDx * monster.zigzagAmplitude * monster.zigzagDirection;
+    // const zigzagY = perpDy * monster.zigzagAmplitude * monster.zigzagDirection;
+
+    // monster.x += zigzagX * 0.1;
+    // monster.y += zigzagY * 0.1;
 
     return monster;
   });
@@ -255,9 +312,25 @@ setInterval(() => {
           if(ship.hp<=0){
           isGameOver = true;
           }
+          monster.state="bounce";
+
+          let dirX=monster.x-ship.x;
+          let dirY=monster.y-ship.y;
+          const currentDist=Math.sqrt(dirX*dirX+dirY*dirY);
+
+          if(currentDist !==0){
+            dirX/=currentDist;
+            dirY/=currentDist;
+          }
+
+          const BOUNCE_SPEED=5;
+          monster.vx=dirX*BOUNCE_SPEED;
+          monster.vy=dirY*BOUNCE_SPEED;
+
+          monster.bounceTimer=30;
 
           // 해당 몬스터 사망 처리
-          isMonsterDead = true;
+          // isMonsterDead = true;
       }
     }
 
