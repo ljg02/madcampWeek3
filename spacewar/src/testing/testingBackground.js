@@ -41,6 +41,7 @@ function World() {
   const [keys, setKeys] = useState({});          // 키보드
   const keysRef = useRef(keys);
   const [weaponAngle, setWeaponAngle] = useState(0); // 마우스 각도(도 단위)
+  const [missileAngle, setMissileAngle]=useState(0);
 
   // ---------------------------
   // 4) 총알 목록(각 총알의 글로벌 좌표)
@@ -52,8 +53,19 @@ function World() {
   // ---------------------------
   const [missiles, setMissiles]=useState([]);
 
+  // 몬스터 목록
+  // const [monsters, setMonsters] = useState([]);
   // 몬스터 이미지 목록
   const monsterImages=[monster1, monster2, monster3, monster4, monster5, monster6, monster7];
+
+  //컨트롤 룸
+  const CONTROL_ROOMS=[
+    {type: "spaceship", x:0, y:0, radius: 30},
+    {type: "gun", x:60, y:-40, radius: 20},
+    {type: "missile", x: -60, y: -40, radius: 20},
+  ];
+
+  const [currentControl, setCurrentControl]=useState(null);
 
   const loadMonsterImages=()=>{
     return monsterImages.map((src)=>{
@@ -230,13 +242,27 @@ function World() {
       const angleInDegrees = (angleInRadians * 180) / Math.PI;
 
       if(socket) {
-        socket.emit("turretMove", angleInDegrees);
-      }
-    };
+        // if(currentControl==="gun"){
+        //   socket.emit("turretMove",{
+        //     type: "gun",
+        //     angle: angleInDegrees,
+        //   });
+        // }else if (currentControl==="missile"){
+        //   socket.emit("turretMove",{
+        //     type: "missile",
+        //     angle: angleInDegrees,
+        //   });
+        socket.emit("turretMove",{
+          type: currentControl,
+          angle: angleInDegrees,
+        });
+        }
+        // socket.emit("turretMove", angleInDegrees);
+      };
 
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [socket]);
+  }, [weaponAngle, missileAngle, shipPos, currentControl, socket]);
 
   useEffect(() => {
     const disableContextMenu = (e) => e.preventDefault();
@@ -250,67 +276,62 @@ function World() {
   useEffect(() => {
     const handleMouseDown = (e) => {
       const angleRad = (weaponAngle * Math.PI) / 180;
+      const angleRadm=(missileAngle*Math.PI)/180;
 
-      if(e.button===1){
-        const turretDist = ship.radius + TURRET_HEIGHT; // 우주선 표면보다 조금 바깥
-      const missileX = turretDist * Math.cos(angleRad);
-      const missileY = turretDist * Math.sin(angleRad);
-
-      const worldX = ship.x + missileX;
-      const worldY = ship.y + missileY;
-
-      // 총알의 발사 당시 글로벌 좌표
-      const newMissile = {
-        x: worldX,
-        y: worldY,
-        angleRad,
-        speed: BULLET_SPEED/2,
-        radius: BULLET_RADIUS*2,
-        exploded: false,
-        explosionRadius: 0,
-        explosionMaxRadius: 100,
-        explosionPhase: 0,
-        mileage: 0, //총알이 주행한 거리
-      };
-
-      //setBullets((prev) => [...prev, newBullet]);
-      if(socket) {
-        socket.emit("launchMissile", newMissile);
-      }
-      }
-      if(e.button===0){
       // 포탑 끝에서 발사한다고 가정
       const turretDist = ship.radius + TURRET_HEIGHT; // 우주선 표면보다 조금 바깥
       const bulletX = turretDist * Math.cos(angleRad);
       const bulletY = turretDist * Math.sin(angleRad);
+
+      const missileX=turretDist * Math.cos(angleRadm);
+      const missileY=turretDist * Math.sin(angleRadm);
 
       // bulletX, bulletY는 "우주선 중심 (0,0) 기준"
       // 우주선 월드 좌표가 (uwx, uwy)라면:
       const worldX = ship.x + bulletX;
       const worldY = ship.y + bulletY;
 
-      // 총알의 발사 당시 글로벌 좌표
-      const newBullet = {
-        x: worldX,
-        y: worldY,
-        angleRad,
-        speed: BULLET_SPEED,
-        radius: BULLET_RADIUS,
-        mileage: 0, //총알이 주행한 거리
-      };
+      const worldmX=ship.x+missileX;
+      const worldmY=ship.y+missileY;
 
-      //setBullets((prev) => [...prev, newBullet]);
-      if(socket) {
-        socket.emit("shootBullet", newBullet);
+      // 총알의 발사 당시 글로벌 좌표
+      switch(currentControl){
+        case "gun":
+          const newBullet={
+            x: worldX,
+            y: worldY,
+            angleRad,
+            speed: BULLET_SPEED,
+            radius: BULLET_RADIUS,
+            mileage: 0,
+          };
+          if(socket) {
+            socket.emit("shootBullet", newBullet);
+          }
+          console.log("fired bullet from gun control");
+          break;
+        case "missile":
+          const newMissile={
+            x: worldmX,
+            y: worldmY,
+            angleRadm,
+            speed: BULLET_SPEED/2,
+            radius: BULLET_RADIUS*2,
+            mileage: 0,
+          };
+          if(socket){
+            socket.emit("launchMissile",newMissile);
+          }
+          console.log("fired missile from missiel control");
+          break;
       }
-    }
     };
 
     window.addEventListener("mousedown", handleMouseDown);
     return () => {
       window.removeEventListener("mousedown", handleMouseDown);
     };
-  }, [weaponAngle, ship, socket]);
+  }, [weaponAngle, missileAngle, ship, currentControl, socket]);
 
   //서버와 연결하고 매 프레임마다 객체들의 좌표 정보 받아오기
   useEffect(() => {
@@ -331,6 +352,7 @@ function World() {
       setPlayerPos(data.players[newSocket.id]);
       setPlayers(data.players);
       setWeaponAngle(data.weaponAngle);
+      setMissileAngle(data.missileAngle);
       setBullets(data.bullets);
       setMissiles(data.missiles);
       setMonsters(data.monsters);
@@ -414,6 +436,7 @@ function World() {
       // 1) 캔버스 초기화 (지우기)
       ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
+
       // 2) 총알 그리기
       bullets.forEach((bullet) => {
         // 캔버스 상 좌표 = bullet.x - cameraOffset.x, bullet.y - cameraOffset.y
@@ -479,6 +502,25 @@ function World() {
         ctx.fillRect(drawX, drawY-10, hpBarWidth, 5);
       });
 
+      //4) 컨트롤 위치
+      CONTROL_ROOMS.forEach(room=>{
+
+        const globalX=shipPos.x+room.x;
+        const globalY=shipPos.y+room.y;
+
+        const drawX=globalX-cameraOffset.x;
+        const drawY=globalY-cameraOffset.y;
+
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, room.radius, 0, 2*Math.PI);
+        ctx.strokeStyle="white";
+        ctx.lineWidth=2;
+        ctx.stroke();
+
+        ctx.fillStyle="yellow";
+        ctx.fillText(room.type, drawX-10, drawY-room.radius -5);
+      });
+      
       // 몬스터 피격 이펙트 그리기
       monsterBulletHit.forEach((monsterBulletHitEffect) => {
         const drawX = monsterBulletHitEffect.x - cameraOffset.x;
@@ -571,19 +613,60 @@ function World() {
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [bullets, cameraOffset]);
+  }, [bullets,missiles,monsters, cameraOffset]);
 
   // ---------------------------------------------------------
-  // (I) 몬스터 이미지 가져오기기
+  // 컨트롤 다가가기기
   // ---------------------------------------------------------
-  // useEffect(()=>{
-  //   const imageCount=7;
-  //   for(let i=0;i<imageCount;i++){
-  //     const img=new Image();
-  //     img.src=`../spacemonster${i+1}.png`;
-  //     monsterImages.push(img);
-  //   }
-  // },[]);
+  useEffect(()=>{
+    const checkProximity=()=>{
+      CONTROL_ROOMS.forEach((room)=>{
+        const dx=playerPos.x-room.x;
+        const dy=playerPos.y-room.y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+
+        if(dist<=room.radius && !currentControl){
+          console.log(`Press Q to acces the ${room.type} control room.`);
+        }
+      });
+    };
+
+    const interval =setInterval(checkProximity, 15);
+    return ()=> clearInterval(interval);
+  },[playerPos,currentControl]);
+
+  // ---------------------------------------------------------
+  // 컨트롤 잡기
+  // ---------------------------------------------------------
+  useEffect(()=>{
+    const handleKeyDown=(event)=>{
+      if(event.key==="q" && !currentControl){
+        CONTROL_ROOMS.forEach((room)=>{
+          const dx=playerPos.x-room.x;
+          const dy=playerPos.y-room.y;
+          const dist=Math.sqrt(dx*dx+dy*dy);
+
+          if(dist<=room.radius){
+            setCurrentControl(room.type);
+            console.log(`Entered the ${room.type} control room`);
+            if(socket){
+              socket.emit("acquireControl",{controlType: room.type});
+            }
+          }
+        });
+      }
+
+        else if(event.key==="e" && currentControl){
+          setCurrentControl(null);
+          if(socket){
+            socket.emit("releaseControl");
+          }
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return()=> window.removeEventListener("keydown", handleKeyDown);
+    },[playerPos, currentControl]);
+
 
   // ---------------------------------------------------------
   // 렌더링
@@ -656,6 +739,7 @@ function World() {
         /> */}
 
         {/* (3) 우주선 표면 포탑 */}
+        <MissileTurret angle={missileAngle} shipRadius={SHIP_RADIUS} turretWidth={TURRET_WIDTH} turretHeight={TURRET_HEIGHT}/>
         <Turret angle={weaponAngle} shipRadius={ship.radius} turretWidth={TURRET_WIDTH} turretHeight={TURRET_HEIGHT} />
       </div>
 
@@ -683,6 +767,40 @@ function Turret({ angle, shipRadius, turretWidth, turretHeight }) {
         width: `${turretWidth}px`,
         height: `${turretHeight}px`,
         backgroundColor: "blue",
+        // 우주선 중심에 맞추기(우주선 하위 컴포넌트이므로 우주선에 상대적인 위치로 설정)
+        left: 0,
+        top: 0,
+        // 회전
+        transform: `
+          translate(
+            ${shipRadius - turretWidth / 2 + turretX}px,
+            ${shipRadius - turretHeight / 2 + turretY}px
+          )
+          rotate(${angle}deg)
+        `,
+        transformOrigin: "center center",
+      }}
+    />
+  );
+}
+function MissileTurret({ angle, shipRadius, turretWidth, turretHeight }) {
+  // 도 -> 라디안
+  const angleRadm = (angle * Math.PI) / 180;
+  // 포탑 위치(우주선 중심 기준)
+
+  // 포탑이 우주선 바깥으로 약간 나가도록
+  const turretDist = shipRadius + turretWidth / 2;
+
+  const turretX = turretDist * Math.cos(angleRadm);
+  const turretY = turretDist * Math.sin(angleRadm);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        width: `${turretWidth}px`,
+        height: `${turretHeight}px`,
+        backgroundColor: "green",
         // 우주선 중심에 맞추기(우주선 하위 컴포넌트이므로 우주선에 상대적인 위치로 설정)
         left: 0,
         top: 0,

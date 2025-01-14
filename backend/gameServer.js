@@ -13,11 +13,14 @@ const io = new Server(server, {
 
 // --- 게임 월드 상태 예시 ---
 let players = {}; // 플레이어 목록 { socket.id: { x: 0, y: 0 } }
+let missileAngle = 0;
 let ship = { x: 0, y: 0, hp: 10, radius: 150};   //우주선 상태(위치, hp)
 let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
 let missiles=[];
 let monsters = [];
+
+let controlAssignments={};
 
 //몬스터 크기
 const MONSTER_RADIUS = 10;
@@ -87,8 +90,8 @@ setInterval(() => {
   missiles=missiles.map((m)=>{
       return {
         ...m,
-        x: m.x+m.speed*Math.cos(m.angleRad),
-        y: m.y + m.speed*Math.sin(m.angleRad),
+        x: m.x+m.speed*Math.cos(m.angleRadm),
+        y: m.y + m.speed*Math.sin(m.angleRadm),
         mileage: m.mileage+m.speed,
       };
   });
@@ -258,7 +261,8 @@ setInterval(() => {
   io.emit("updateGameState", { 
     players, 
     ship, 
-    weaponAngle, 
+    weaponAngle,
+    missileAngle, 
     bullets,
     missiles, 
     monsters,
@@ -303,6 +307,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("spaceShipMove", (keys) => {
+    if(controlAssignments[socket.id]!=="spaceship"){
+      return;
+    }
     let x = ship.x;
     let y = ship.y;
     const step = 10;
@@ -316,12 +323,20 @@ io.on("connection", (socket) => {
     ship.y = y;
   });
 
-  socket.on("turretMove", (newWeaponAngle) => {
-    weaponAngle = newWeaponAngle
+  socket.on("turretMove", (data) => {
+    // weaponAngle = newWeaponAngle
+    if(data.type==="gun"){
+      console.log("gun turret moving");
+      weaponAngle=data.angle;
+    }else if(data.type==="missile"){
+      console.log("turret moving");
+      missileAngle=data.angle;
+    }
   });
 
   // 3) 총알 발사
   socket.on("shootBullet", (bulletData) => {
+    if(controlAssignments[socket.id]!=="gun"){return;}
     // bulletData = { x, y, angleRad, speed, radius, ... }
     // 발사 위치/각도 계산은 클라이언트에서 한 뒤 서버로 전송
     bullets.push({
@@ -331,18 +346,33 @@ io.on("connection", (socket) => {
     });
   });
 
+  //4) 미사일 발사
   socket.on("launchMissile",(missileData)=>{
+    if(controlAssignments[socket.id]!=="missile"){return;}
     missiles.push({
       ...missileData,
       ownerId: socket.id,
     })
   })
 
-  // 4) 연결 해제
+  //5) 컨트롤 잡기
+  socket.on("acquireControl",(data)=>{
+    controlAssignments[socket.id]=data.controlType;
+    console.log(`socket ${socket.id} is controlling: ${data.controlType}`);
+  });
+
+  //6) 컨트롤 놓기기
+  socket.on("releaseControl",()=>{
+    console.log(`socket ${socket.id} released control`);
+    controlAssignments[socket.id]=null;
+  })
+
+  // 6) 연결 해제
   socket.on("disconnect", () => {
     console.log("유저 접속 해제:", socket.id);
     // 플레이어 목록에서 제거
     delete players[socket.id];
+    delete controlAssignments[socket.id];
   });
 });
 
