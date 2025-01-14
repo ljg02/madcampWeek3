@@ -64,11 +64,9 @@ function startSpawningMonsters() {
       setTimeout(spawnAtRandomInterval, nextSpawnTime);
     }
   
-    // Start the spawning loop after 5s
-    setTimeout(spawnAtRandomInterval, 5000);
+    // Start the spawning loop after 3s
+    setTimeout(spawnAtRandomInterval, 3000);
   }
-
-startSpawningMonsters();
 
 // 주기적으로 총알 이동 & 몬스터 이동 & 게임 상태 갱신(서버 사이드 게임 루프 예시)
 setInterval(() => {
@@ -262,6 +260,9 @@ io.on("connection", (socket) => {
     }
     console.log(`플레이어 등록: ${socket.id}, 이름=${data.name}, 색=${data.color}`);
   });
+
+  // 몬스터 스폰 시작
+  startSpawningMonsters();
 
   // 2) 클라이언트로부터 상태 업데이트 받기
   //    예: 플레이어가 키/마우스 입력을 통해 위치나 각도를 바꿨을 때 emit("playerMove", ...)
