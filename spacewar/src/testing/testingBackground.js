@@ -15,7 +15,7 @@ import { useLocation } from "react-router-dom";
 function World() {
   const [socket, setSocket] = useState(null);
   //0) 우주선 월드 좌표
-  const [ship, setShip] = useState({ x: 0, y: 0, hp: 10});
+  const [ship, setShip] = useState({ x: 0, y: 0, hp: 10, radius: 150 });
 
   // ---------------------------
   // 1) 플레이어 (우주선 로컬 좌표계)
@@ -74,7 +74,7 @@ function World() {
   // ---------------------------
   // 5) 우주선, 플레이어 크기
   // ---------------------------
-  const SHIP_RADIUS = 150;   // 우주선 반지름
+  const SHIP_RADIUS = ship.radius;   // 우주선 반지름
   const PLAYER_RADIUS = 15;  // 내부 원 플레이어 반지름
   const TURRET_WIDTH = 50;  //포탑 두께
   const TURRET_HEIGHT = 20; //포탑 길이

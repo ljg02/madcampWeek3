@@ -13,7 +13,7 @@ const io = new Server(server, {
 
 // --- 게임 월드 상태 예시 ---
 let players = {}; // 플레이어 목록 { socket.id: { x: 0, y: 0 } }
-let ship = { x: 0, y: 0, hp: 10};   //우주선 상태(위치, hp)
+let ship = { x: 0, y: 0, hp: 10, radius: 150};   //우주선 상태(위치, hp)
 let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
 let missiles=[];
@@ -157,7 +157,7 @@ setInterval(() => {
       const dy = b.y - monster.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist <= (b.radius + MONSTER_RADIUS)) {
+      if (dist <= (b.radius + monster.radius)) {
         monster.hp-=1;
         bulletHitMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
 
@@ -184,7 +184,7 @@ setInterval(() => {
       const my=m.y-monster.y;
       const mist=Math.sqrt(mx*mx+my*my);
 
-      if(mist<=(m.radius+MONSTER_RADIUS)){
+      if(mist<=(m.radius+monster.radius)){
         m.exploded=true;
         collideMissileIndexes.add(j);
       }
@@ -195,6 +195,27 @@ setInterval(() => {
           isMonsterDead=true;
         }
         break;
+      }
+    }
+
+    // 우주선과의 충돌 확인
+    if(!isMonsterDead) {
+      let shipHitMonster = [];
+      let isGameOver = false;
+      const dx = ship.x - monster.x;
+      const dy = ship.y - monster.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+    
+      if (dist <= (ship.radius + monster.radius)) {
+          ship.hp-=1;
+
+          // 우주선 hp가 0이면 게임오버
+          if(ship.hp<=0){
+          isGameOver = true;
+          }
+
+          // 해당 몬스터 사망 처리
+          isMonsterDead = true;
       }
     }
 
@@ -222,12 +243,12 @@ setInterval(() => {
     io.emit("monsterBulletHit", monster); // 각 피격에 대해 이벤트 전송
   });
 
-  // 5. 처치 정보 브로드캐스트
+  // 6. 처치 정보 브로드캐스트
   deadMonster.forEach((monster) => {
     io.emit("monsterDead", monster); // 각 처치에 대해 이벤트 전송
   });
 
-  // 6. 모든 클라이언트에게 최신 상태를 브로드캐스트
+  // 7. 모든 클라이언트에게 최신 상태를 브로드캐스트
   //io.emit("updateGameState", { players, shipPos, weaponAngle, bullets, monsters });
   io.emit("updateGameState", { 
     players, 
