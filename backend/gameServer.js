@@ -160,6 +160,7 @@ setInterval(() => {
   let collideMissileIndexes = new Set();
   let deadMonster = []; // 처치된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
   let bulletHitMonster = []; // 총알에 피격된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
+  let missileHitMonster=[];
   let isGameOver = false;
 
   // 모든 몬스터에 대해 각각 순회하며, 모든 총알과의 위치관계를 확인
@@ -209,16 +210,28 @@ setInterval(() => {
       if(mist<=(m.radius+monster.radius)){
         m.exploded=true;
         collideMissileIndexes.add(j);
+        missileHitMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
       }
 
       if(m.exploded&&mist<=MISSILE_BLAST_RADIUS){
-        monster.hp-=5;
+        // // monster.hp-=5;
         if(monster.hp<=0){
           isMonsterDead=true;
           // 처치 몬스터 정보 저장
           deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
         }
-        break;
+        // break;
+        monsters.forEach((othermonster)=>{
+          const mxx=m.x-othermonster.x;
+          const myy=m.y-othermonster.y;
+          const mmist=Math.sqrt(mxx*mxx+myy*myy);
+          if(mmist<=MISSILE_BLAST_RADIUS){
+            othermonster.hp-=5;
+            if(othermonster.hp<=0){
+              deadMonster.push({ x: othermonster.x, y: othermonster.y, radius: othermonster.radius });
+            }
+          }
+        })
       }
     }
 
@@ -264,6 +277,10 @@ setInterval(() => {
   // 5. 총알 피격 정보 브로드캐스트
   bulletHitMonster.forEach((monster) => {
     io.emit("monsterBulletHit", monster); // 각 피격에 대해 이벤트 전송
+  });
+
+  missileHitMonster.forEach((monster)=>{
+    io.emit("monsterMissileHit", monster);
   });
 
   // 6. 처치 정보 브로드캐스트
@@ -322,8 +339,11 @@ io.on("connection", (socket) => {
   socket.on("playerMove", (playerPos) => {
     // data = { playerPos, } (프론트엔드에서 보내준다고 가정)
     if (players[socket.id]) {
-      players[socket.id].x = playerPos.x;
-      players[socket.id].y = playerPos.y;
+      if(!controlAssignments[socket.id]){
+        players[socket.id].x = playerPos.x;
+        players[socket.id].y = playerPos.y;
+      }
+
     }
     // 이후 매 프레임마다 setInterval로 updateGameState를 보내므로,
     // 여기서는 따로 emit하지 않아도 됨(선택사항)
