@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import GameMap from '../monster/monster.js';
+
 function Combine() {
     // 배경 이미지를 움직이기 위한 오프셋(좌표)
     const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -275,7 +275,6 @@ function Combine() {
                 );
             })}
 
-            <GameMap offset={offset} />
         </div>
     );
 }

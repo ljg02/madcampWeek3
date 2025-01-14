@@ -1,7 +1,6 @@
 // Gameover.js
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom"; // 또는 다른 라우팅 방식
-import Game from "../testing/testingClient";
 
 function Gameover() {
     const navigate = useNavigate();
