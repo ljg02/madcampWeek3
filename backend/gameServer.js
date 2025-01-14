@@ -70,7 +70,7 @@ function startSpawningMonsters() {
     }
   
     function spawnAtRandomInterval() {
-      if(monsters.length > 10) return;
+      if(!mainLoop || monsters.length > 10) return;
       spawnMonster(); // Spawn one monster
   
       // Set a random interval for the next spawn (between 3 and 5 seconds)
@@ -79,7 +79,9 @@ function startSpawningMonsters() {
     }
   
     // Start the spawning loop after 3s
-    setTimeout(spawnAtRandomInterval, 3000);
+    if(mainLoop) {
+      setTimeout(spawnAtRandomInterval, 3000);
+    }
 }
 
 function resetGameState() {
@@ -98,8 +100,26 @@ function resetGameState() {
     // spawn 타이머 등을 초기화하는 로직을 넣어도 됨
 }
 
-// 주기적으로 총알 이동 & 몬스터 이동 & 게임 상태 갱신(서버 사이드 게임 루프 예시)
-setInterval(() => {
+let mainLoop = null; // 메인 루프 식별자(Interval ID 등)
+
+function startMainLoop() {
+  // 이미 실행 중이면 중복으로 시작하지 않음
+  if (mainLoop) return;
+
+  mainLoop = setInterval(() => {
+    // 여기서 bullets, monsters, collisions 등 게임 로직을 돌림
+    gameLoopStep();
+  }, 10);
+}
+
+function stopMainLoop() {
+  if (!mainLoop) return;
+  clearInterval(mainLoop);
+  mainLoop = null;
+}
+
+//한 주기마다 실행할 동작
+function gameLoopStep() {
   // 1. 총알 이동
   bullets = bullets.map((b) => {
     return {
@@ -180,37 +200,7 @@ setInterval(() => {
         monster.vy=0;
       }
     }
-    // let dx= monster.x - ship.x;
-    // let dy= monster.y - ship.y;
-
-    // const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
-
-    // //(dx, dy)는 우주선 중심에서 몬스터를 향하는 단위벡터가 됨
-    // if (distanceToCenter !== 0) {
-    //   dx /= distanceToCenter;
-    //   dy /= distanceToCenter;
-    // }
-
-    // monster.frameCount++;
-    // if (monster.frameCount % 30 === 0) {
-    //   monster.zigzagDirection *= -1;
-    // }
-
-    // //몬스터가 우주선에 점점 다가가도록
-    // monster.x += (-dx) * monster.speed;
-    // monster.y += (-dy) * monster.speed;
-
-    // //수직 벡터
-    // const perpDx = dy;
-    // const perpDy = -dx;
-
-    // //우주선-몬스터를 잇는 직선에 수직으로 진동하도록
-    // const zigzagX = perpDx * monster.zigzagAmplitude * monster.zigzagDirection;
-    // const zigzagY = perpDy * monster.zigzagAmplitude * monster.zigzagDirection;
-
-    // monster.x += zigzagX * 0.1;
-    // monster.y += zigzagY * 0.1;
-
+  
     return monster;
   });
 
@@ -379,8 +369,8 @@ setInterval(() => {
   // 8. 게임 오버 브로드캐스트
   if(isGameOver) {
     io.emit("gameover", score);
-    console.log('gameover: ', score);
     resetGameState();
+    stopMainLoop();
   }
 
   // 9. 모든 클라이언트에게 최신 상태를 브로드캐스트
@@ -396,11 +386,18 @@ setInterval(() => {
     score,
     seatStates,
    });
-}, 10);
+}
 
 // 클라이언트가 소켓 연결을 맺으면
 io.on("connection", (socket) => {
   console.log("새로운 유저 연결:", socket.id);
+
+  if (!mainLoop) {
+    // 메인 루프가 꺼져 있다면 다시 켜기
+    startMainLoop();
+    // 몬스터 스폰 시작
+    startSpawningMonsters();
+  }
 
   // 1) 플레이어 등록
   players[socket.id] = {
@@ -419,9 +416,6 @@ io.on("connection", (socket) => {
     }
     console.log(`플레이어 등록: ${socket.id}, 이름=${data.name}, 색=${data.color}`);
   });
-
-  // 몬스터 스폰 시작
-  startSpawningMonsters();
 
   // 2) 클라이언트로부터 상태 업데이트 받기
   //    예: 플레이어가 키/마우스 입력을 통해 위치나 각도를 바꿨을 때 emit("playerMove", ...)
