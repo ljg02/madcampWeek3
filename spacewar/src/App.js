@@ -6,6 +6,7 @@ import GameMap from './monster/monster.js';
 import Combine from './mapmonster/combine.js';
 import World from './testing/testingBackground.js';
 import Game from './testing/testingClient.js';
+import MainPage from './mainpage/mainpage.js'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
         <Route path="/world" element={<World />} />
         <Route path="/" element={<Combine />} />
         <Route path="/client" element={<Game />} />
+        <Route path="/main" element={<MainPage />} />
       </Routes>
     </Router>
   );
