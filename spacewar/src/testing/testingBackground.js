@@ -446,10 +446,6 @@ function World() {
       </div>
 
       {/* 기존 총알 그리던 부분 */}
-
-      {/* (5) GameMap 컴포넌트 (원하시는 방식으로 cameraOffset을 넘기면 됨) */}
-      {/* 예: <GameMap offset={cameraOffset} /> */}
-      {/* <GameMap offset={cameraOffset} /> */}
     </div>
   );
 }
