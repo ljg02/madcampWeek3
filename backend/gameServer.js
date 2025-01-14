@@ -14,7 +14,7 @@ const io = new Server(server, {
 // --- 게임 월드 상태 예시 ---
 let players = {}; // 플레이어 목록 { socket.id: { x: 0, y: 0 } }
 let missileAngle = 0;
-let ship = { x: 0, y: 0, hp: 5, radius: 150};   //우주선 상태(위치, hp)
+let ship = { x: 0, y: 0, hp: 10, radius: 150};   //우주선 상태(위치, hp)
 let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
 let missiles=[];
@@ -117,7 +117,7 @@ setInterval(() => {
   missiles=missiles.map((m)=>{
       return {
         ...m,
-        x: m.x+m.speed*Math.cos(m.angleRadm),
+        x: m.x + m.speed*Math.cos(m.angleRadm),
         y: m.y + m.speed*Math.sin(m.angleRadm),
         mileage: m.mileage+m.speed,
       };
@@ -220,10 +220,9 @@ setInterval(() => {
   let newMonsters = [];
   // 어떤 총알이 충돌했는지 추적 (인덱스)
   let collidedBulletIndexes = new Set();
-  let collideMissileIndexes = new Set();
   let deadMonster = []; // 처치된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
   let bulletHitMonster = []; // 총알에 피격된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
-  let missileHitMonster=[];
+  let ExplodedMissile=[];
   let isGameOver = false;
 
   // 모든 몬스터에 대해 각각 순회하며, 모든 총알과의 위치관계를 확인
@@ -255,46 +254,23 @@ setInterval(() => {
 
         // 해당 총알 제거 표시
         collidedBulletIndexes.add(i);
-        // 이번 monster도 루프 중단
+        // 즉시 총알 순회 종료(한 프레임당 하나의 총알만 충돌 발생)
         break;
       }
     }
 
-    for (let j=0;j<missiles.length; j++){
-      if(collideMissileIndexes.has(j)){
-        continue;
-      }
-      const m=missiles[j];
-      const mx=m.x-monster.x;
-      const my=m.y-monster.y;
+    //미사일 배열을 순회하며 미사일과의 충돌 확인
+    for (let j = 0; j < missiles.length; j++){
+      const m = missiles[j];
+      const mx = m.x - monster.x;
+      const my = m.y - monster.y;
       //몬스터와 미사일 간의 거리
-      const mist=Math.sqrt(mx*mx+my*my);
+      const mist = Math.sqrt(mx*mx+my*my);
 
-      if(mist<=(m.radius+monster.radius)){
+      //몬스터와 닿은 미사일은 폭발상태로 변경
+      if(mist <= (m.radius+monster.radius)){
         m.exploded=true;
-        collideMissileIndexes.add(j);
-        missileHitMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
-      }
-
-      if(m.exploded&&mist<=MISSILE_BLAST_RADIUS){
-        // // monster.hp-=5;
-        if(monster.hp<=0){
-          isMonsterDead=true;
-          // 처치 몬스터 정보 저장
-          deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
-        }
-        // break;
-        monsters.forEach((othermonster)=>{
-          const mxx=m.x-othermonster.x;
-          const myy=m.y-othermonster.y;
-          const mmist=Math.sqrt(mxx*mxx+myy*myy);
-          if(mmist<=MISSILE_BLAST_RADIUS){
-            othermonster.hp-=5;
-            if(othermonster.hp<=0){
-              deadMonster.push({ x: othermonster.x, y: othermonster.y, radius: othermonster.radius });
-            }
-          }
-        })
+        ExplodedMissile.push({ x: m.x, y: m.y, radius: m.explodeRadius});
       }
     }
 
@@ -306,6 +282,7 @@ setInterval(() => {
     
       if (dist <= (ship.radius + monster.radius)) {
           ship.hp-=1;
+          //우주선 충돌 이벤트 방송
           io.emit("shipHit");
 
           // 우주선 hp가 0이면 게임오버
@@ -339,14 +316,44 @@ setInterval(() => {
       newMonsters.push(monster);
     }
   });
+  monsters = newMonsters;
+  newMonsters = [];
+
+  // 폭발 반경에 들어간 몬스터 처리
+  monsters.forEach((monster) => {
+    let isMonsterDead = false;
+    for(let i = 0; i < missiles.length; i++) {
+      const m = missiles[i];
+      const mx = m.x - monster.x;
+      const my = m.y - monster.y;
+      //몬스터와 미사일 간의 거리
+      const mist = Math.sqrt(mx*mx+my*my);
+
+      //반경 내에 있는지 확인
+      if(m.exploded && mist<=(m.explodeRadius+monster.radius)){
+        monster.hp-=5;
+        if(monster.hp<=0){
+          isMonsterDead=true;
+          // 처치 몬스터 정보 저장
+          deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
+        }
+      }
+    }
+
+    // 죽지 않은 몬스터만 newMonsters에 넣음
+    if (!isMonsterDead) {
+      newMonsters.push(monster);
+    }
+  });
 
   // 충돌되지 않은 총알만 남김
   let newBullets = bullets.filter((_, index) => {
     return !collidedBulletIndexes.has(index);
   });
 
-  let newMissiles=missiles.filter((_, index)=>{
-    return !collideMissileIndexes.has(index);
+  // 폭발하지 않은 미사일만 남김
+  let newMissiles=missiles.filter((m, index)=>{
+    return !m.exploded;
   })
 
   monsters = newMonsters;
@@ -358,23 +365,24 @@ setInterval(() => {
     io.emit("monsterBulletHit", monster); // 각 피격에 대해 이벤트 전송
   });
 
-  missileHitMonster.forEach((monster)=>{
-    io.emit("monsterMissileHit", monster);
+  // 6. 미사일 폭발 정보 브로드캐스트
+  ExplodedMissile.forEach((missileEffect)=>{
+    io.emit("missileExplode", missileEffect);
   });
 
-  // 6. 처치 정보 브로드캐스트
+  // 7. 처치 정보 브로드캐스트
   deadMonster.forEach((monster) => {
     io.emit("monsterDead", monster); // 각 처치에 대해 이벤트 전송
     score += 10;
   });
 
-  // 7. 게임 오버 브로드캐스트
+  // 8. 게임 오버 브로드캐스트
   if(isGameOver) {
     io.emit("gameover", score);
     resetGameState();
   }
 
-  // 8. 모든 클라이언트에게 최신 상태를 브로드캐스트
+  // 9. 모든 클라이언트에게 최신 상태를 브로드캐스트
   //io.emit("updateGameState", { players, shipPos, weaponAngle, bullets, monsters });
   io.emit("updateGameState", { 
     players, 
