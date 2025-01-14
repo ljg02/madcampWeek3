@@ -66,6 +66,20 @@ function World() {
     ];
 
     const [currentControl, setCurrentControl] = useState(null);
+  
+    //컨트롤 이펙트
+    const [switchStates, setSwitchStates]=useState({
+      spaceship: {on: false, visible: false},
+      gun: {on: false, visible: false},
+      missile: {on: false, visible: false},
+    });
+
+    //자리 색깔
+    const [seatStates, setSeatState]=useState({
+      spaceship: {occupant: null, color: "#ffffff"},
+      gun: {occupant: null, color: "#ffffff"},
+      missile: {occupant: null, color: "#ffffff"},
+    });
 
     const loadMonsterImages = () => {
         return monsterImages.map((src) => {
@@ -74,6 +88,13 @@ function World() {
             return img;
         });
     };
+
+  function hexToRGBA(hex,alpha){
+    const r= parseInt(hex.slice(1,3),16);
+    const g=parseInt(hex.slice(3,5),16);
+    const b=parseInt(hex.slice(5,7),16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
 
     useEffect(() => {
         const images = loadMonsterImages();
@@ -521,24 +542,56 @@ function World() {
             });
 
             //4) 컨트롤 위치
-            CONTROL_ROOMS.forEach(room => {
+      CONTROL_ROOMS.forEach(room=>{
 
-                const globalX = ship.x + room.x;
-                const globalY = ship.y + room.y;
+        const globalX=ship.x+room.x;
+        const globalY=ship.y+room.y;
 
-                const drawX = globalX - cameraOffset.x;
-                const drawY = globalY - cameraOffset.y;
+        const drawX=globalX-cameraOffset.x;
+        const drawY=globalY-cameraOffset.y;
 
-                ctx.beginPath();
-                ctx.arc(drawX, drawY, room.radius, 0, 2 * Math.PI);
-                ctx.strokeStyle = "white";
-                ctx.lineWidth = 2;
-                ctx.stroke();
+        if(switchStates[room.type].visible){
+          const isOn=switchStates[room.type].on;
 
-                ctx.fillStyle = "yellow";
-                ctx.font = "12px Orbitron, sans-serif"; // 커스텀 폰트 사용
-                ctx.fillText(room.type, drawX - 10, drawY - room.radius - 5);
-            });
+          const switchX=drawX;
+          const switchY=drawY-(room.radius+20);
+
+          ctx.fillStyle=isOn ? "green":"red";
+          ctx.fillRect(switchX -20, switchY-15, 40,20);
+
+          ctx.fillStyle="white";
+          ctx.font="14px Arial";
+          ctx.fillText(isOn ? "ON": "OFF", switchX-10, switchY);
+        }
+
+        // const globalX=ship.x+room.x;
+        // const globalY=ship.y+room.y;
+
+        // const drawX=globalX-cameraOffset.x;
+        // const drawY=globalY-cameraOffset.y;
+        const seatColor=seatStates[room.type]?.color||"#ffffff";
+        const dx=playerPos.x-room.x;
+        const dy=playerPos.y-room.y;
+
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        let seatAlpha=0.4;
+        if(dist<=room.radius && seatColor==="#ffffff"){
+          seatAlpha=0.7;
+        }else{
+          seatAlpha=0.4;
+        }
+
+        const seatColorWithAlpha=hexToRGBA(seatColor, seatAlpha);
+
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, room.radius, 0, 2*Math.PI);
+        ctx.fillStyle=seatColorWithAlpha;
+        ctx.fill();
+
+        ctx.fillStyle="yellow";
+        ctx.font = "12px Orbitron, sans-serif"; // 커스텀 폰트 사용
+        ctx.fillText(room.type, drawX-10, drawY-room.radius -5);
+      });
 
             // 몬스터 피격 이펙트 그리기
             monsterBulletHit.forEach((monsterBulletHitEffect) => {
@@ -659,105 +712,145 @@ function World() {
     }, [bullets, missiles, monsters, cameraOffset]);
 
     // ---------------------------------------------------------
-    // 컨트롤 다가가기기
-    // ---------------------------------------------------------
-    useEffect(() => {
-        const checkProximity = () => {
-            CONTROL_ROOMS.forEach((room) => {
-                const dx = playerPos.x - room.x;
-                const dy = playerPos.y - room.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+  // 컨트롤 다가가기
+  // ---------------------------------------------------------
+  useEffect(()=>{
+    const checkProximity=()=>{
+      CONTROL_ROOMS.forEach((room)=>{
+        const dx=playerPos.x-room.x;
+        const dy=playerPos.y-room.y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
 
-                if (dist <= room.radius && !currentControl) {
-                    //console.log(`Press Q to acces the ${room.type} control room.`);
-                }
-            });
-        };
-
-        const interval = setInterval(checkProximity, 15);
-        return () => clearInterval(interval);
-    }, [playerPos, currentControl]);
-
-    // ---------------------------------------------------------
-    // 컨트롤 잡기
-    // ---------------------------------------------------------
-    useEffect(() => {
-        const handleKeyDown = (event) => {
-            if (event.key === "q" && !currentControl) {
-                CONTROL_ROOMS.forEach((room) => {
-                    const dx = playerPos.x - room.x;
-                    const dy = playerPos.y - room.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist <= room.radius) {
-                        setCurrentControl(room.type);
-                        //console.log(`Entered the ${room.type} control room`);
-                        if (socket) {
-                            socket.emit("acquireControl", { controlType: room.type });
-                        }
-                    }
-                });
+        if(dist<=room.radius && !currentControl){
+          setSwitchStates((prev)=>{
+            if(prev[room.type].visible && !prev[room.type].on){
+              return prev;
             }
+            return{
+              ...prev,
+              [room.type]:{...prev[room.type], on: false, visible: true},
+            };
+          });
+        }else if (dist>room.radius){
+          setSwitchStates((prev)=>{
+            if(!prev[room.type].visible){return prev;}
+            return{
+              ...prev,
+              [room.type]: {...prev[room.type], visible: false},
+            };
+          });
+        }
+      });
+    };
 
-            else if (event.key === "e" && currentControl) {
-                setCurrentControl(null);
-                if (socket) {
-                    socket.emit("releaseControl");
-                }
+    const interval =setInterval(checkProximity, 15);
+    return ()=> clearInterval(interval);
+  },[playerPos,currentControl]);
+
+    // ---------------------------------------------------------
+  // 컨트롤 잡기
+  // ---------------------------------------------------------
+  useEffect(()=>{
+    const handleKeyDown=(event)=>{
+      if(event.key==="q" && !currentControl){
+        CONTROL_ROOMS.forEach((room)=>{
+          const dx=playerPos.x-room.x;
+          const dy=playerPos.y-room.y;
+          const dist=Math.sqrt(dx*dx+dy*dy);
+
+          if(dist<=room.radius){
+            setCurrentControl(room.type);
+            //console.log(`Entered the ${room.type} control room`);
+            setSwitchStates((prev)=>({
+              ...prev,
+              [room.type]: {on: true, visible: true},
+            }));
+
+            setTimeout(()=>{
+              setSwitchStates((prev)=>({
+                ...prev,
+                [room.type]:{on: true, visible: false},
+              }));
+            },500);
+
+            if(socket){
+              socket.emit("acquireControl",{controlType: room.type});
             }
-        };
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [playerPos, currentControl]);
+          }
+        });
+      }
+
+        else if(event.key==="e" && currentControl){
+          setSwitchStates((prev)=>({
+            ...prev,
+            [currentControl]: {on: false, visible: true},
+          }));
+
+          setTimeout(()=>{
+            setSwitchStates((prev)=>({
+              ...prev,
+              [currentControl]: {...prev[currentControl], visible: false},
+            }));
+          },1000);
+
+          setCurrentControl(null);
+          if(socket){
+            socket.emit("releaseControl");
+          }
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return()=> window.removeEventListener("keydown", handleKeyDown);
+    },[playerPos, currentControl]);
 
 
     // ---------------------------------------------------------
-    // 렌더링
-    // ---------------------------------------------------------
-    return (
-        <div
-            style={{
-                width: "100vw",
-                height: "100vh",
-                position: "relative",
-                overflow: "hidden",
-                // 배경 이미지를 보여주고 싶다면 아래처럼,
-                // cameraOffset에 따라 backgroundPosition을 조정할 수 있음.
-                backgroundImage:
-                    'url("https://static.vecteezy.com/system/resources/thumbnails/050/286/592/small_2x/a-starry-night-sky-with-a-long-line-of-stars-photo.jpg")',
-                backgroundRepeat: "repeat",
-                // 예: 배경 위치에 cameraOffset 반영 (원하는 로직에 맞춰 조정)
-                backgroundPosition: `${-cameraOffset.x}px ${-cameraOffset.y}px`,
-            }}
-        >
-            {/* <canvas> : 총알(및 기타 오브젝트) 드로잉 */}
-            <canvas
-                ref={canvasRef}
-                style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    // zIndex를 좀 높게 해주면,
-                    // 배경보다 앞으로 그려질 수 있음
-                    zIndex: 10,
-                }}
-                width={window.innerWidth}
-                height={window.innerHeight}
-            />
+  // 렌더링
+  // ---------------------------------------------------------
+  return (
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+        position: "relative",
+        overflow: "hidden",
+        // 배경 이미지를 보여주고 싶다면 아래처럼,
+        // cameraOffset에 따라 backgroundPosition을 조정할 수 있음.
+        backgroundImage:
+          'url("https://static.vecteezy.com/system/resources/thumbnails/050/286/592/small_2x/a-starry-night-sky-with-a-long-line-of-stars-photo.jpg")',
+        backgroundRepeat: "repeat",
+        // 예: 배경 위치에 cameraOffset 반영 (원하는 로직에 맞춰 조정)
+        backgroundPosition: `${-cameraOffset.x}px ${-cameraOffset.y}px`,
+      }}
+    >
+      {/* <canvas> : 총알(및 기타 오브젝트) 드로잉 */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          // zIndex를 좀 높게 해주면,
+          // 배경보다 앞으로 그려질 수 있음
+          zIndex: 10,
+        }}
+        width={window.innerWidth}
+        height={window.innerHeight}
+      />
 
-            {/* (1) 우주선 (큰 원) */}
-            {/* 사실상 화면 중심에 고정 */}
-            <div
-                style={{
-                    position: "absolute",
-                    width: ship.radius * 2,
-                    height: ship.radius * 2,
-                    borderRadius: "50%",
-                    backgroundColor: "rgba(0,255,0,0.2)",
-                    border: "2px solid green",
-                    left: 0,
-                    top: 0,
-                    transform: `translate(
+      {/* (1) 우주선 (큰 원) */}
+      {/* 사실상 화면 중심에 고정 */}
+      <div
+        style={{
+          position: "absolute",
+          width: ship.radius * 2,
+          height: ship.radius * 2,
+          borderRadius: "50%",
+          backgroundColor: "rgba(0,255,0,0.2)",
+          border: "2px solid green",
+          left: 0,
+          top: 0,
+          transform: `translate(
             ${ship.x - cameraOffset.x - ship.radius}px,
             ${ship.y - cameraOffset.y - ship.radius}px
           )`,
