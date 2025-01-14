@@ -26,7 +26,7 @@ let score = 0;  //점수(모든 플레이어가 공유)
 let seatStates={
   spaceship: {occupant: null, color: "#ffffff"},
   gun: {occupant: null, color: "#ffffff"},
-  missile: {occupant: null, color: "#fffffff"},
+  missile: {occupant: null, color: "#ffffff"},
 };
 
 //몬스터 크기
@@ -193,7 +193,8 @@ function gameLoopStep() {
       monster.x+=monster.vx;
       monster.y+=monster.vy;
 
-      monster.bounceTimer--;
+      //프레임당 10ms만큼 감소
+      monster.bounceTimer -= 10;
       if(monster.bounceTimer<=0){
         monster.state="approach";
         monster.vx=0;
@@ -265,7 +266,7 @@ function gameLoopStep() {
     }
 
     // 우주선과의 충돌 확인
-    if(!isMonsterDead) {
+    if(!isMonsterDead && monster.state !== "bounce") {
       const dx = ship.x - monster.x;
       const dy = ship.y - monster.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -279,6 +280,8 @@ function gameLoopStep() {
           if(ship.hp<=0){
           isGameOver = true;
           }
+
+          // 넉백 설정
           monster.state="bounce";
 
           let dirX=monster.x-ship.x;
@@ -290,11 +293,11 @@ function gameLoopStep() {
             dirY/=currentDist;
           }
 
-          const BOUNCE_SPEED=5;
+          const BOUNCE_SPEED=7;
           monster.vx=dirX*BOUNCE_SPEED;
           monster.vy=dirY*BOUNCE_SPEED;
 
-          monster.bounceTimer=30;
+          monster.bounceTimer=300;
 
           // 해당 몬스터 사망 처리
           // isMonsterDead = true;
@@ -432,21 +435,13 @@ io.on("connection", (socket) => {
     // 여기서는 따로 emit하지 않아도 됨(선택사항)
   });
 
-  socket.on("spaceShipMove", (keys) => {
+  socket.on("spaceShipMove", (shipPos) => {
     if(controlAssignments[socket.id]!=="spaceship"){
       return;
     }
-    let x = ship.x;
-    let y = ship.y;
-    const step = 10;
-    // WASD
-    if (keys['ArrowUp']) y -= step;
-    if (keys['ArrowDown']) y += step;
-    if (keys['ArrowLeft']) x -= step;
-    if (keys['ArrowRight']) x += step;
-
-    ship.x = x;
-    ship.y = y;
+    
+    ship.x = shipPos.x;
+    ship.y = shipPos.y;
   });
 
   socket.on("turretMove", (data) => {

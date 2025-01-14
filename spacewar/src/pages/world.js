@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
-import GameMap from "../monster/monster.js";
 import monster1 from "../spacemonster1.png";
 import monster2 from "../spacemonster2.png";
 import monster3 from "../spacemonster3.png";
@@ -17,6 +16,7 @@ function World() {
     const [socket, setSocket] = useState(null);
     //0) 우주선 월드 좌표
     const [ship, setShip] = useState({ x: 0, y: 0, hp: 10, radius: 150 });
+    const shipRef = useRef(ship);
     // 우주선 피격 이펙트 상태
     const [shipHit, setShipHit] = useState([]);
 
@@ -189,9 +189,23 @@ function World() {
     //     - 방향키로 이동한다고 가정
     // ---------------------------------------------------------
     useEffect(() => {
+        shipRef.current = ship;
+    }, [ship]);
+    useEffect(() => {
         if (!socket) return; // socket이 null이면 return
         const interval = setInterval(() => {
-            socket.emit("spaceShipMove", keysRef.current);
+            const keys = keysRef.current;
+            let { x, y } = shipRef.current || { x: 0, y: 0 };
+            const step = 10;
+            // WASD
+            if (keys["w"] || keys["W"]) y -= step;
+            if (keys["s"] || keys["S"]) y += step;
+            if (keys["a"] || keys["A"]) x -= step;
+            if (keys["d"] || keys["D"]) x += step;
+
+            if(socket) {
+                socket.emit("spaceShipMove", { x, y });
+            }
         }, 15);
 
         return () => clearInterval(interval);
@@ -207,7 +221,7 @@ function World() {
     useEffect(() => {
         const interval = setInterval(() => {
             const keys = keysRef.current;
-            let { x, y } = playerPosRef.current;
+            let { x, y } = playerPosRef.current || { x: 0, y: 0 };
             const step = 5;
             // WASD
             if (keys["w"] || keys["W"]) y -= step;
@@ -492,28 +506,6 @@ function World() {
                 ctx.arc(drawX, drawY, missile.radius, 0, 2 * Math.PI, false);
                 ctx.fillStyle = "green";
                 ctx.fill();
-
-                // if (missile.exploded) {
-                //     ctx.beginPath();
-                //     ctx.arc(
-                //         drawX,
-                //         drawY,
-                //         missile.explosionRadius,
-                //         0,
-                //         2 * Math.PI,
-                //         false
-                //     );
-                //     ctx.fillStyle = `rgba(255, 165, 0, ${1 - missile.explosionPhase})`;
-                //     ctx.fill();
-
-                //     missile.explosionRadius += 5;
-                //     missile.explosionPhase += 0.1;
-                // } else {
-                //     ctx.beginPath();
-                //     ctx.arc(drawX, drawY, missile.radius, 0, 2 * Math.PI, false);
-                //     ctx.fillStyle = "green";
-                //     ctx.fill();
-                // }
             });
 
             // 3) 몬스터 그리기
@@ -851,28 +843,12 @@ function World() {
                     left: 0,
                     top: 0,
                     transform: `translate(
-            ${ship.x - cameraOffset.x - ship.radius}px,
-            ${ship.y - cameraOffset.y - ship.radius}px
-          )`,
+                        ${ship.x - cameraOffset.x - ship.radius}px,
+                        ${ship.y - cameraOffset.y - ship.radius}px
+                    )`,
                 }}
             >
                 {/* (2) 우주선 내부 플레이어(빨간 원) */}
-                {/* <div
-          style={{
-            position: "absolute",
-            width: PLAYER_RADIUS * 2,
-            height: PLAYER_RADIUS * 2,
-            borderRadius: "50%",
-            backgroundColor: playerPos.color || "pink",
-            left: 0,
-            top: 0,
-            transform: `translate(
-                ${playerPos.x - PLAYER_RADIUS + SHIP_RADIUS}px,
-                ${playerPos.y - PLAYER_RADIUS + SHIP_RADIUS}px
-              )`,
-            // (shipPos.x - playerPos.x)는 우주선에 상대적인 플레이어의 위치
-          }}
-        /> */}
 
                 {/* (3) 우주선 표면 포탑 */}
                 <MissileTurret angle={missileAngle} shipRadius={SHIP_RADIUS} turretWidth={M_TURRET_WIDTH} turretHeight={M_TURRET_HEIGHT} />
