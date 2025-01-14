@@ -48,7 +48,7 @@ function startSpawningMonsters() {
         frameInterval: Math.floor(Math.random() * 50) + 20,
         frameCount: 0,
         radius: MONSTER_RADIUS,
-        hp: Math.floor(Math.random()*10)+1,
+        hp: 3,
       };
   
       // Add the new monster to the array
@@ -144,7 +144,7 @@ setInterval(() => {
 
   // 모든 몬스터에 대해 각각 순회하며, 모든 총알과의 위치관계를 확인
   monsters.forEach((monster) => {
-    let isMonsterHit = false;
+    let isMonsterDead = false;
 
     // 총알 배열을 순회하여 충돌 여부 확인
     for (let i = 0; i < bullets.length; i++) {
@@ -162,13 +162,13 @@ setInterval(() => {
         monster.hp-=1;
         // 충돌 발생
         if(monster.hp<=0){
-          isMonsterHit = true;
+          isMonsterDead = true;
+          // 처치 몬스터 정보 저장
+          deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
         }
-        // isMonsterHit = true;
-        // 해당 총알도 제거 표시
+
+        // 해당 총알 제거 표시
         collidedBulletIndexes.add(i);
-        // 처치 몬스터 정보 저장
-        deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
         // 이번 monster도 루프 중단
         break;
       }
@@ -191,14 +191,14 @@ setInterval(() => {
       if(m.exploded&&mist<=MISSILE_BLAST_RADIUS){
         monster.hp-=5;
         if(monster.hp<=0){
-          isMonsterHit=true;
+          isMonsterDead=true;
         }
         break;
       }
     }
 
-    // 충돌 안 된 몬스터만 newMonsters에 넣음
-    if (!isMonsterHit) {
+    // 죽지 않은 몬스터만 newMonsters에 넣음
+    if (!isMonsterDead) {
       newMonsters.push(monster);
     }
   });
@@ -217,9 +217,9 @@ setInterval(() => {
   missiles=newMissiles;
 
 
-  // 5. 폭발 정보 브로드캐스트
+  // 5. 처치 정보 브로드캐스트
   deadMonster.forEach((monster) => {
-    io.emit("monsterDead", monster); // 각 폭발에 대해 이벤트 전송
+    io.emit("monsterDead", monster); // 각 처치에 대해 이벤트 전송
   });
 
   // 6. 모든 클라이언트에게 최신 상태를 브로드캐스트
@@ -230,10 +230,7 @@ setInterval(() => {
     weaponAngle, 
     bullets,
     missiles, 
-    monsters: monsters.map((monster)=>({
-      ...monster,
-      hp: monster.hp,
-    })),
+    monsters,
    });
 }, 10);
 

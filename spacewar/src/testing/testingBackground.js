@@ -417,22 +417,22 @@ function World() {
         const drawX = monster.x - cameraOffset.x - monster.radius;
         const drawY = monster.y - cameraOffset.y - monster.radius;
 
-        // ctx.fillStyle = 'green';
-        // ctx.fillRect(drawX, drawY, monster.radius*2, monster.radius*2);
-        if(!monster.imageIndex){
-          monster.imageIndex=Math.floor(Math.random()*monsterImages.length);
-        }
+        ctx.fillStyle = 'green';
+        ctx.fillRect(drawX, drawY, monster.radius*2, monster.radius*2);
+        // if(!monster.imageIndex){
+        //   monster.imageIndex=Math.floor(Math.random()*monsterImages.length);
+        // }
 
-        const monsterImage=monsterImages[monster.imageIndex];
+        // const monsterImage=monsterImages[monster.imageIndex];
         
-        if(monsterImage instanceof HTMLImageElement){
-          ctx.drawImage(monsterImage, drawX, drawY, monster.radius*2, monster.radius*2);
-        }else{
-          console.error("invalid monster image:", monsterImage);
-        }
+        // if(monsterImage instanceof HTMLImageElement){
+        //   ctx.drawImage(monsterImage, drawX, drawY, monster.radius*2, monster.radius*2);
+        // }else{
+        //   console.error("invalid monster image:", monsterImage);
+        // }
 
         ctx.fillStyle="red";
-        const hpBarWidth=(monster.hp/10)*(monster.radius*1.5);
+        const hpBarWidth=(monster.hp/3)*(monster.radius*2);
         ctx.fillRect(drawX, drawY-10, hpBarWidth, 5);
       });
 
