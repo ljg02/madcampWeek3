@@ -140,7 +140,9 @@ setInterval(() => {
   // 어떤 총알이 충돌했는지 추적 (인덱스)
   let collidedBulletIndexes = new Set();
   let collideMissileIndexes = new Set();
+  let deadMonster = []; // 처치된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
 
+  // 모든 몬스터에 대해 각각 순회하며, 모든 총알과의 위치관계를 확인
   monsters.forEach((monster) => {
     let isMonsterHit = false;
 
@@ -165,6 +167,8 @@ setInterval(() => {
         // isMonsterHit = true;
         // 해당 총알도 제거 표시
         collidedBulletIndexes.add(i);
+        // 처치 몬스터 정보 저장
+        deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
         // 이번 monster도 루프 중단
         break;
       }
@@ -212,7 +216,14 @@ setInterval(() => {
   bullets = newBullets;
   missiles=newMissiles;
 
-  // 3. 모든 클라이언트에게 최신 상태를 브로드캐스트
+
+  // 5. 폭발 정보 브로드캐스트
+  deadMonster.forEach((monster) => {
+    io.emit("monsterDead", monster); // 각 폭발에 대해 이벤트 전송
+  });
+
+  // 6. 모든 클라이언트에게 최신 상태를 브로드캐스트
+  //io.emit("updateGameState", { players, shipPos, weaponAngle, bullets, monsters });
   io.emit("updateGameState", { 
     players, 
     shipPos, 
@@ -231,7 +242,22 @@ io.on("connection", (socket) => {
   console.log("새로운 유저 연결:", socket.id);
 
   // 1) 플레이어 등록
-  players[socket.id] = { x: 0, y: 0 };
+  players[socket.id] = {
+    x: 0, y: 0,
+    name: "???",    // 임시
+    color: "#ffffff" // 임시
+  };
+
+  // 플레이어 정보(이름, 색깔) 등록
+  socket.on("joinGame", (data) => {
+    // data = { name, color }
+    // => 이걸 players[socket.id]에 저장
+    if (players[socket.id]) {
+      players[socket.id].name = data.name;
+      players[socket.id].color = data.color;
+    }
+    console.log(`플레이어 등록: ${socket.id}, 이름=${data.name}, 색=${data.color}`);
+  });
 
   // 2) 클라이언트로부터 상태 업데이트 받기
   //    예: 플레이어가 키/마우스 입력을 통해 위치나 각도를 바꿨을 때 emit("playerMove", ...)
