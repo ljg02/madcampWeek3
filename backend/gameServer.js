@@ -141,6 +141,7 @@ setInterval(() => {
   let collidedBulletIndexes = new Set();
   let collideMissileIndexes = new Set();
   let deadMonster = []; // 처치된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
+  let bulletHitMonster = []; // 총알에 피격된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
 
   // 모든 몬스터에 대해 각각 순회하며, 모든 총알과의 위치관계를 확인
   monsters.forEach((monster) => {
@@ -160,6 +161,8 @@ setInterval(() => {
 
       if (dist <= (b.radius + MONSTER_RADIUS)) {
         monster.hp-=1;
+        bulletHitMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
+
         // 충돌 발생
         if(monster.hp<=0){
           isMonsterDead = true;
@@ -216,6 +219,10 @@ setInterval(() => {
   bullets = newBullets;
   missiles=newMissiles;
 
+  // 5. 총알 피격 정보 브로드캐스트
+  bulletHitMonster.forEach((monster) => {
+    io.emit("monsterBulletHit", monster); // 각 피격에 대해 이벤트 전송
+  });
 
   // 5. 처치 정보 브로드캐스트
   deadMonster.forEach((monster) => {

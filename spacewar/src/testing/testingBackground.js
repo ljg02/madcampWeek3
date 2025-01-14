@@ -67,6 +67,8 @@ function World() {
   // 몬스터 목록(각 몬스터들의 글로벌 좌표)
   const [monsters, setMonsters] = useState([]);
   // 몬스터 처치 이펙트 상태
+  const [monsterBulletHit, setMonsterBulletHit] = useState([]);
+  // 몬스터 처치 이펙트 상태
   const [monsterDead, setMonsterDead] = useState([]);
 
   // ---------------------------
@@ -298,7 +300,6 @@ function World() {
     }
     };
 
-
     window.addEventListener("mousedown", handleMouseDown);
     return () => {
       window.removeEventListener("mousedown", handleMouseDown);
@@ -329,6 +330,18 @@ function World() {
       setMonsters(data.monsters);
     });
 
+    // 몬스터 피격 이벤트 수신
+    newSocket.on("monsterBulletHit", (monsterBulletHitEffect) => {
+        const newEffect = {
+          x: monsterBulletHitEffect.x,
+          y: monsterBulletHitEffect.y,
+          startTime: Date.now(),
+          duration: 300, // 피격 이펙트 지속 시간 (밀리초 단위)
+          radius: monsterBulletHitEffect.radius,
+        };
+        setMonsterBulletHit((prev) => [...prev, newEffect]);
+      });
+
     // 몬스터 폭발 이벤트 수신
     newSocket.on("monsterDead", (monsterDeadEffect) => {
         const newEffect = {
@@ -346,10 +359,13 @@ function World() {
     };
   }, []);
 
-  // 수명이 다한 몬스터 폭발 이펙트 제거
+  // 수명이 다한 이펙트 제거
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
+      setMonsterBulletHit((prev) =>
+        prev.filter((monsterBulletHitEffect) => now - monsterBulletHitEffect.startTime < monsterBulletHitEffect.duration)
+      );
       setMonsterDead((prev) =>
         prev.filter((monsterDeadEffect) => now - monsterDeadEffect.startTime < monsterDeadEffect.duration)
       );
@@ -436,8 +452,23 @@ function World() {
         ctx.fillRect(drawX, drawY-10, hpBarWidth, 5);
       });
 
+      // 몬스터 피격 이펙트 그리기
+      monsterBulletHit.forEach((monsterBulletHitEffect) => {
+        const drawX = monsterBulletHitEffect.x - cameraOffset.x - monsterBulletHitEffect.radius;
+        const drawY = monsterBulletHitEffect.y - cameraOffset.y - monsterBulletHitEffect.radius;
+        const progress = (Date.now() - monsterBulletHitEffect.startTime) / monsterBulletHitEffect.duration;
+        if (progress < 1) {
+          const alpha = (1 - progress)*0.5; // 점점 투명해짐
+          const size = monsterBulletHitEffect.radius + progress*10; // 점점 커짐
+
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`; // 주황색
+          ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      });
+
       // 몬스터 폭발 이펙트 그리기
-      console.log(monsterDead);
       monsterDead.forEach((monsterDeadEffect) => {
         const drawX = monsterDeadEffect.x - cameraOffset.x - monsterDeadEffect.radius;
         const drawY = monsterDeadEffect.y - cameraOffset.y - monsterDeadEffect.radius;
