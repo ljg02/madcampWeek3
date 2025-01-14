@@ -10,9 +10,10 @@ import monster5 from "../spacemonster5.png";
 import monster6 from "../spacemonster6.png";
 import monster7 from "../spacemonster7.png";
 
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 function World() {
+  const navigate = useNavigate();
   const [socket, setSocket] = useState(null);
   //0) 우주선 월드 좌표
   const [ship, setShip] = useState({ x: 0, y: 0, hp: 10, radius: 150 });
@@ -95,6 +96,9 @@ function World() {
   const location = useLocation();
   // 메인 페이지에서 넘어온 name, color
   const { name, color } = location.state || { name: "Unknown", color: "#ff0000" };
+
+  //점수
+  const [score, setScore] = useState(0); 
 
   // ---------------------------------------------------------
   // (A) 브라우저 창 크기 변화 감지 -> 화면 중앙 재계산
@@ -356,6 +360,7 @@ function World() {
         setMonsterDead((prev) => [...prev, newEffect]);
     });
 
+    // 우주선 피격 이벤트 수신
     newSocket.on("shipHit", () => {
         const newEffect = {
             x: ship.x,
@@ -366,6 +371,11 @@ function World() {
         };
         setShipHit((prev) => [...prev, newEffect]);
     });
+
+    // 게임오버 이벤트 수신
+    newSocket.on("gameover", () => {
+        navigate("/gameover", { state: { score: score } });
+    })
 
     return () => {
       newSocket.disconnect();

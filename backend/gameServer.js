@@ -140,6 +140,7 @@ setInterval(() => {
   let collideMissileIndexes = new Set();
   let deadMonster = []; // 처치된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
   let bulletHitMonster = []; // 총알에 피격된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
+  let isGameOver = false;
 
   // 모든 몬스터에 대해 각각 순회하며, 모든 총알과의 위치관계를 확인
   monsters.forEach((monster) => {
@@ -200,7 +201,6 @@ setInterval(() => {
 
     // 우주선과의 충돌 확인
     if(!isMonsterDead) {
-      let isGameOver = false;
       const dx = ship.x - monster.x;
       const dy = ship.y - monster.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -248,7 +248,12 @@ setInterval(() => {
     io.emit("monsterDead", monster); // 각 처치에 대해 이벤트 전송
   });
 
-  // 7. 모든 클라이언트에게 최신 상태를 브로드캐스트
+  // 7. 게임 오버 브로드캐스트
+  if(isGameOver) {
+    io.emit("gameover");
+  }
+
+  // 8. 모든 클라이언트에게 최신 상태를 브로드캐스트
   //io.emit("updateGameState", { players, shipPos, weaponAngle, bullets, monsters });
   io.emit("updateGameState", { 
     players, 
