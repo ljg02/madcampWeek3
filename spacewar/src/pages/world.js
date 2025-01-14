@@ -421,7 +421,7 @@ function World() {
                 x: explodedMissile.x,
                 y: explodedMissile.y,
                 startTime: Date.now(),
-                duration: 500,
+                duration: 700,
                 radius: explodedMissile.radius,
             };
             setMissileEffect((prev) => [...prev, newEffect]);
@@ -616,7 +616,7 @@ function World() {
                 const progress = (Date.now() - missileEffect.startTime) / missileEffect.duration;
                 if (progress < 1) {
                     const alpha = (1 - progress) * 0.6;
-                    const size = missileEffect.radius + progress * 10;
+                    const size = missileEffect.radius + progress * 20;
 
                     ctx.beginPath();
                     ctx.fillStyle = `rgba(255, 100, 0, ${alpha})`;
@@ -632,7 +632,7 @@ function World() {
                 const progress = (Date.now() - monsterDeadEffect.startTime) / monsterDeadEffect.duration;
                 if (progress < 1) {
                     const alpha = (1 - progress) * 0.7; // 점점 투명해짐
-                    const size = monsterDeadEffect.radius + progress * 10; // 점점 커짐
+                    const size = monsterDeadEffect.radius + progress * 15; // 점점 커짐
 
                     ctx.beginPath();
                     ctx.fillStyle = `rgba(100, 255, 0, ${alpha})`; // 연두색
