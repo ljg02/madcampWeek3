@@ -47,11 +47,14 @@ function World() {
     // 4) 총알 목록(각 총알의 글로벌 좌표)
     // ---------------------------
     const [bullets, setBullets] = useState([]);
+    const lastBulletFireRef = useRef(0);
 
     // ---------------------------
     //  미사일 목록(글로벌 좌표)
     // ---------------------------
     const [missiles, setMissiles] = useState([]);
+    // 미사일 마지막 발사 시점(타임스탬프) 저장용
+    const lastMissileFireRef = useRef(0);
 
     // 몬스터 목록
     // const [monsters, setMonsters] = useState([]);
@@ -65,9 +68,12 @@ function World() {
         { type: "missile", x: -100, y: 0, radius: 20 },
     ];
 
+    // 클라이언트가 잡고 있는 조종석
     const [currentControl, setCurrentControl] = useState(null);
+    const currentControlRef = useRef(currentControl);
 
-    //컨트롤 이펙트
+    //컨트롤 이펙트(조종석에 닿았을 때 뜨는 on/off 이펙트)
+    //(on : on/off 글씨, visible: 보이게 할지)
     const [switchStates, setSwitchStates] = useState({
         spaceship: { on: false, visible: false },
         gun: { on: false, visible: false },
@@ -75,7 +81,7 @@ function World() {
     });
 
     //자리 색깔
-    const [seatStates, setSeatState] = useState({
+    const [seatStates, setSeatStates] = useState({
         spaceship: { occupant: null, color: "#ffffff" },
         gun: { occupant: null, color: "#ffffff" },
         missile: { occupant: null, color: "#ffffff" },
@@ -113,13 +119,15 @@ function World() {
     // ---------------------------
     const SHIP_RADIUS = ship.radius;   // 우주선 반지름
     const PLAYER_RADIUS = 15;  // 내부 원 플레이어 반지름
-    const TURRET_WIDTH = 50;  //포탑 길이
+    const TURRET_WIDTH = 40;  //포탑 길이
     const TURRET_HEIGHT = 20; //포탑 두께
     const M_TURRET_WIDTH = 20; //포탑 길이
     const M_TURRET_HEIGHT = 30; //포탑 두께
     const BULLET_SPEED = 30;  //총알 속도
     const BULLET_RADIUS = 5;  //총알 반지름
-    const MISSILE_BLAST_RADIUS = 100; //미사일 폭발 반경
+    const BULLET_COOLDOWN = 200;    //총알 쿨다운 시간
+    const MISSILE_BLAST_RADIUS = 70; //미사일 폭발 반경
+    const MISSILE_COOLDOWN = 1000;  // 미사일 쿨다운 시간 (ms 단위)
 
     // 화면 중앙(정중앙 픽셀 좌표)
     const [screenCenter, setScreenCenter] = useState({
@@ -194,6 +202,9 @@ function World() {
     useEffect(() => {
         if (!socket) return; // socket이 null이면 return
         const interval = setInterval(() => {
+            // spaceship 조종석을 잡고 있지 않으면 이동시키지 않도록
+            if(currentControlRef.current !== "spaceship") return;
+
             const keys = keysRef.current;
             let { x, y } = shipRef.current || { x: 0, y: 0 };
             const step = 10;
@@ -220,6 +231,9 @@ function World() {
     }, [playerPos]);
     useEffect(() => {
         const interval = setInterval(() => {
+            // 무언가 잡고 있으면 플레이어 이동이 일어나지 않도록
+            if(currentControlRef.current) return;
+
             const keys = keysRef.current;
             let { x, y } = playerPosRef.current || { x: 0, y: 0 };
             const step = 5;
@@ -265,6 +279,8 @@ function World() {
     // ---------------------------------------------------------
     useEffect(() => {
         const handleMouseMove = (e) => {
+            if(currentControlRef.current !== "gun" && currentControlRef.current !== "missile") return;
+
             // (1) 화면(우주선) 중심 = (centerX, centerY)
             //     (우주선이 화면 정중앙에 고정이므로)
             const centerX = window.innerWidth / 2;
@@ -282,7 +298,7 @@ function World() {
 
             if (socket) {
                 socket.emit("turretMove", {
-                    type: currentControl,
+                    type: currentControlRef.current,
                     angle: angleInDegrees,
                 });
             }
@@ -291,7 +307,7 @@ function World() {
 
         window.addEventListener("mousemove", handleMouseMove);
         return () => window.removeEventListener("mousemove", handleMouseMove);
-    }, [weaponAngle, missileAngle, ship, currentControl, socket]);
+    }, [socket]);
 
     //우클릭 시 정보창 노출 방지
     useEffect(() => {
@@ -324,9 +340,20 @@ function World() {
             const worldmX = ship.x + missileX;
             const worldmY = ship.y + missileY;
 
-            // 총알의 발사 당시 글로벌 좌표
-            switch (currentControl) {
+            // 발사 시점(쿨다운 계산용)
+            const now = Date.now();
+            // 투사체 발사 당시 글로벌 좌표 계산
+            switch (currentControlRef.current) {
                 case "gun":
+                    // 이전 발사 시점으로부터 COOLDOWN(ms) 미만이면 발사 안 함
+                    if (now - lastBulletFireRef.current < BULLET_COOLDOWN) {
+                        // 쿨다운 중이므로 무시
+                        return;
+                    }
+
+                    // 쿨다운 해제 -> 발사 처리
+                    lastBulletFireRef.current = now;
+
                     const newBullet = {
                         x: worldX,
                         y: worldY,
@@ -341,11 +368,20 @@ function World() {
                     //console.log("fired bullet from gun control");
                     break;
                 case "missile":
+                    // 이전 발사 시점으로부터 COOLDOWN(ms) 미만이면 발사 안 함
+                    if (now - lastMissileFireRef.current < MISSILE_COOLDOWN) {
+                        // 쿨다운 중이므로 무시
+                        return;
+                    }
+
+                    // 쿨다운 해제 -> 발사 처리
+                    lastMissileFireRef.current = now;
+
                     const newMissile = {
                         x: worldmX,
                         y: worldmY,
                         angleRadm,
-                        speed: BULLET_SPEED / 2,
+                        speed: BULLET_SPEED / 3,
                         radius: BULLET_RADIUS * 2,
                         mileage: 0,
                         exploded: false,
@@ -363,7 +399,7 @@ function World() {
         return () => {
             window.removeEventListener("mousedown", handleMouseDown);
         };
-    }, [weaponAngle, missileAngle, ship, currentControl, socket]);
+    }, [weaponAngle, missileAngle, ship, socket]);
 
     //서버와 연결하고 매 프레임마다 객체들의 좌표 정보 받아오기
     useEffect(() => {
@@ -390,6 +426,7 @@ function World() {
             setMissiles(data.missiles);
             setMonsters(data.monsters);
             setScore(data.score);
+            setSeatStates(data.seatStates);
         });
 
         // 몬스터 피격 이벤트 수신
@@ -409,7 +446,7 @@ function World() {
                 x: explodedMissile.x,
                 y: explodedMissile.y,
                 startTime: Date.now(),
-                duration: 500,
+                duration: 700,
                 radius: explodedMissile.radius,
             };
             setMissileEffect((prev) => [...prev, newEffect]);
@@ -471,7 +508,7 @@ function World() {
     }, []);
 
     // ---------------------------------------------------------
-    // (H) Canvas 드로잉 로직 - 총알 그리기
+    // (H) Canvas 드로잉 로직
     // ---------------------------------------------------------
     useEffect(() => {
         let animationId;
@@ -504,7 +541,7 @@ function World() {
 
                 ctx.beginPath();
                 ctx.arc(drawX, drawY, missile.radius, 0, 2 * Math.PI, false);
-                ctx.fillStyle = "green";
+                ctx.fillStyle = "rgba(255, 100, 0, 1)";
                 ctx.fill();
             });
 
@@ -533,34 +570,29 @@ function World() {
                 ctx.fillRect(drawX, drawY - 10, hpBarWidth, 5);
             });
 
-            //4) 컨트롤 위치
+            //4) 조종석 그리기
             CONTROL_ROOMS.forEach(room => {
-
                 const globalX = ship.x + room.x;
                 const globalY = ship.y + room.y;
 
                 const drawX = globalX - cameraOffset.x;
                 const drawY = globalY - cameraOffset.y;
 
+                // on/off 글씨 그리기
                 if (switchStates[room.type].visible) {
                     const isOn = switchStates[room.type].on;
 
                     const switchX = drawX;
                     const switchY = drawY - (room.radius + 20);
 
-                    ctx.fillStyle = isOn ? "green" : "red";
-                    ctx.fillRect(switchX - 20, switchY - 15, 40, 20);
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+                    ctx.fillRect(switchX - 35, switchY - 15, 70, 20);
 
                     ctx.fillStyle = "white";
                     ctx.font = "14px Arial";
-                    ctx.fillText(isOn ? "ON" : "OFF", switchX - 10, switchY);
+                    ctx.fillText(isOn ? "Press E" : "Press Q", switchX - 25, switchY);
                 }
 
-                // const globalX=ship.x+room.x;
-                // const globalY=ship.y+room.y;
-
-                // const drawX=globalX-cameraOffset.x;
-                // const drawY=globalY-cameraOffset.y;
                 const seatColor = seatStates[room.type]?.color || "#ffffff";
                 const dx = playerPos.x - room.x;
                 const dy = playerPos.y - room.y;
@@ -568,6 +600,7 @@ function World() {
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 let seatAlpha = 0.4;
                 if (dist <= room.radius && seatColor === "#ffffff") {
+                    // 조종석에 닿으면 진해지도록
                     seatAlpha = 0.7;
                 } else {
                     seatAlpha = 0.4;
@@ -595,7 +628,7 @@ function World() {
                     const size = monsterBulletHitEffect.radius + progress * 10; // 점점 커짐
 
                     ctx.beginPath();
-                    ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`; // 주황색
+                    ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`; // 빨간색
                     ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
                     ctx.fill();
                 }
@@ -608,26 +641,26 @@ function World() {
                 const progress = (Date.now() - missileEffect.startTime) / missileEffect.duration;
                 if (progress < 1) {
                     const alpha = (1 - progress) * 0.6;
-                    const size = missileEffect.radius + progress * 10;
+                    const size = missileEffect.radius + progress * 20;
 
                     ctx.beginPath();
-                    ctx.fillStyle = `rgba(255, 0,0, ${alpha})`;
+                    ctx.fillStyle = `rgba(255, 100, 0, ${alpha})`;
                     ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
                     ctx.fill();
                 }
             })
 
-            // 몬스터 폭발 이펙트 그리기
+            // 몬스터 처치 이펙트 그리기
             monsterDead.forEach((monsterDeadEffect) => {
                 const drawX = monsterDeadEffect.x - cameraOffset.x;
                 const drawY = monsterDeadEffect.y - cameraOffset.y;
                 const progress = (Date.now() - monsterDeadEffect.startTime) / monsterDeadEffect.duration;
                 if (progress < 1) {
-                    const alpha = (1 - progress) * 0.8; // 점점 투명해짐
-                    const size = monsterDeadEffect.radius + progress * 10; // 점점 커짐
+                    const alpha = (1 - progress) * 0.7; // 점점 투명해짐
+                    const size = monsterDeadEffect.radius + progress * 15; // 점점 커짐
 
                     ctx.beginPath();
-                    ctx.fillStyle = `rgba(255, 255, 0, ${alpha})`; // 노란색
+                    ctx.fillStyle = `rgba(100, 255, 0, ${alpha})`; // 연두색
                     ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
                     ctx.fill();
                 }
@@ -708,12 +741,13 @@ function World() {
     // ---------------------------------------------------------
     useEffect(() => {
         const checkProximity = () => {
+            let { x, y } = playerPosRef.current || { x: 0, y: 0 };
             CONTROL_ROOMS.forEach((room) => {
-                const dx = playerPos.x - room.x;
-                const dy = playerPos.y - room.y;
+                const dx = x - room.x;
+                const dy = y - room.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist <= room.radius && !currentControl) {
+                if (dist <= room.radius && !currentControlRef.current) {
                     setSwitchStates((prev) => {
                         if (prev[room.type].visible && !prev[room.type].on) {
                             return prev;
@@ -737,19 +771,25 @@ function World() {
 
         const interval = setInterval(checkProximity, 15);
         return () => clearInterval(interval);
-    }, [playerPos, currentControl]);
+    }, []);
 
     // ---------------------------------------------------------
     // 컨트롤 잡기
     // ---------------------------------------------------------
     useEffect(() => {
+        currentControlRef.current = currentControl;
+    }, [currentControl]);
+    useEffect(() => {
         const handleKeyDown = (event) => {
-            if (event.key === "q" && !currentControl) {
+            let { x, y } = playerPosRef.current || { x: 0, y: 0 };
+            // 잡기
+            if (event.key === "q" && !currentControlRef.current) {
                 CONTROL_ROOMS.forEach((room) => {
-                    const dx = playerPos.x - room.x;
-                    const dy = playerPos.y - room.y;
+                    const dx = x - room.x;
+                    const dy = y - room.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
+                    // 플레이어가 조종실 반경 내에 있으면
                     if (dist <= room.radius) {
                         setCurrentControl(room.type);
                         //console.log(`Entered the ${room.type} control room`);
@@ -771,19 +811,19 @@ function World() {
                     }
                 });
             }
-
-            else if (event.key === "e" && currentControl) {
+            // 놓기
+            else if (event.key === "e" && currentControlRef.current) {
                 setSwitchStates((prev) => ({
                     ...prev,
-                    [currentControl]: { on: false, visible: true },
+                    [currentControlRef.current]: { on: false, visible: true },
                 }));
 
                 setTimeout(() => {
                     setSwitchStates((prev) => ({
                         ...prev,
-                        [currentControl]: { ...prev[currentControl], visible: false },
+                        [currentControlRef.current]: { ...prev[currentControlRef.current], visible: false },
                     }));
-                }, 1000);
+                }, 500);
 
                 setCurrentControl(null);
                 if (socket) {
@@ -793,7 +833,7 @@ function World() {
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [playerPos, currentControl]);
+    }, [socket]);
 
 
     // ---------------------------------------------------------
