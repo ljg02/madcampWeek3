@@ -65,9 +65,11 @@ function World() {
         { type: "missile", x: -100, y: 0, radius: 20 },
     ];
 
+    // 클라이언트가 잡고 있는 조종석
     const [currentControl, setCurrentControl] = useState(null);
 
-    //컨트롤 이펙트
+    //컨트롤 이펙트(조종석에 닿았을 때 뜨는 on/off 이펙트)
+    //(on : on/off 글씨, visible: 보이게 할지)
     const [switchStates, setSwitchStates] = useState({
         spaceship: { on: false, visible: false },
         gun: { on: false, visible: false },
@@ -75,7 +77,7 @@ function World() {
     });
 
     //자리 색깔
-    const [seatStates, setSeatState] = useState({
+    const [seatStates, setSeatStates] = useState({
         spaceship: { occupant: null, color: "#ffffff" },
         gun: { occupant: null, color: "#ffffff" },
         missile: { occupant: null, color: "#ffffff" },
@@ -194,6 +196,9 @@ function World() {
     useEffect(() => {
         if (!socket) return; // socket이 null이면 return
         const interval = setInterval(() => {
+            // spaceship 조종석을 잡고 있지 않으면 이동시키지 않도록
+            if(currentControl !== "spaceship") return;
+
             const keys = keysRef.current;
             let { x, y } = shipRef.current || { x: 0, y: 0 };
             const step = 10;
@@ -220,6 +225,9 @@ function World() {
     }, [playerPos]);
     useEffect(() => {
         const interval = setInterval(() => {
+            // 무언가 잡고 있으면 플레이어 이동이 일어나지 않도록
+            if(currentControl) return;
+
             const keys = keysRef.current;
             let { x, y } = playerPosRef.current || { x: 0, y: 0 };
             const step = 5;
@@ -265,6 +273,8 @@ function World() {
     // ---------------------------------------------------------
     useEffect(() => {
         const handleMouseMove = (e) => {
+            if(currentControl !== "gun" && currentControl !== "missile") return;
+
             // (1) 화면(우주선) 중심 = (centerX, centerY)
             //     (우주선이 화면 정중앙에 고정이므로)
             const centerX = window.innerWidth / 2;
@@ -390,6 +400,7 @@ function World() {
             setMissiles(data.missiles);
             setMonsters(data.monsters);
             setScore(data.score);
+            setSeatStates(data.seatStates);
         });
 
         // 몬스터 피격 이벤트 수신
@@ -533,15 +544,15 @@ function World() {
                 ctx.fillRect(drawX, drawY - 10, hpBarWidth, 5);
             });
 
-            //4) 컨트롤 위치
+            //4) 조종석 그리기
             CONTROL_ROOMS.forEach(room => {
-
                 const globalX = ship.x + room.x;
                 const globalY = ship.y + room.y;
 
                 const drawX = globalX - cameraOffset.x;
                 const drawY = globalY - cameraOffset.y;
 
+                // on/off 글씨 그리기
                 if (switchStates[room.type].visible) {
                     const isOn = switchStates[room.type].on;
 
@@ -556,11 +567,6 @@ function World() {
                     ctx.fillText(isOn ? "ON" : "OFF", switchX - 10, switchY);
                 }
 
-                // const globalX=ship.x+room.x;
-                // const globalY=ship.y+room.y;
-
-                // const drawX=globalX-cameraOffset.x;
-                // const drawY=globalY-cameraOffset.y;
                 const seatColor = seatStates[room.type]?.color || "#ffffff";
                 const dx = playerPos.x - room.x;
                 const dy = playerPos.y - room.y;
@@ -568,6 +574,7 @@ function World() {
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 let seatAlpha = 0.4;
                 if (dist <= room.radius && seatColor === "#ffffff") {
+                    // 조종석에 닿으면 진해지도록
                     seatAlpha = 0.7;
                 } else {
                     seatAlpha = 0.4;
@@ -708,9 +715,10 @@ function World() {
     // ---------------------------------------------------------
     useEffect(() => {
         const checkProximity = () => {
+            let { x, y } = playerPosRef.current || { x: 0, y: 0 };
             CONTROL_ROOMS.forEach((room) => {
-                const dx = playerPos.x - room.x;
-                const dy = playerPos.y - room.y;
+                const dx = x - room.x;
+                const dy = y - room.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist <= room.radius && !currentControl) {
@@ -737,19 +745,22 @@ function World() {
 
         const interval = setInterval(checkProximity, 15);
         return () => clearInterval(interval);
-    }, [playerPos, currentControl]);
+    }, [currentControl]);
 
     // ---------------------------------------------------------
     // 컨트롤 잡기
     // ---------------------------------------------------------
     useEffect(() => {
         const handleKeyDown = (event) => {
+            let { x, y } = playerPosRef.current || { x: 0, y: 0 };
+            // 잡기
             if (event.key === "q" && !currentControl) {
                 CONTROL_ROOMS.forEach((room) => {
-                    const dx = playerPos.x - room.x;
-                    const dy = playerPos.y - room.y;
+                    const dx = x - room.x;
+                    const dy = y - room.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
+                    // 플레이어가 조종실 반경 내에 있으면
                     if (dist <= room.radius) {
                         setCurrentControl(room.type);
                         //console.log(`Entered the ${room.type} control room`);
@@ -771,7 +782,7 @@ function World() {
                     }
                 });
             }
-
+            // 놓기
             else if (event.key === "e" && currentControl) {
                 setSwitchStates((prev) => ({
                     ...prev,
@@ -783,7 +794,7 @@ function World() {
                         ...prev,
                         [currentControl]: { ...prev[currentControl], visible: false },
                     }));
-                }, 1000);
+                }, 500);
 
                 setCurrentControl(null);
                 if (socket) {
@@ -793,7 +804,7 @@ function World() {
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [playerPos, currentControl]);
+    }, [socket, currentControl]);
 
 
     // ---------------------------------------------------------

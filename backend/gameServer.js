@@ -19,10 +19,11 @@ let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
 let missiles=[];
 let monsters = [];
-let controlAssignments={};
+let controlAssignments={};  // 각 플레이어가 잡은 조종석 목록 { socket.id: "spaceship" }
 
 let score = 0;  //점수(모든 플레이어가 공유)
 
+// 각 조종석 상태(잡은 사람과 색깔)
 let seatStates={
   spaceship: {occupant: null, color: "#ffffff"},
   gun: {occupant: null, color: "#ffffff"},
@@ -93,6 +94,11 @@ function resetGameState() {
     missiles = [];
     monsters = [];
     controlAssignments = {};
+    seatStates = {
+      spaceship: {occupant: null, color: "#ffffff"},
+      gun: {occupant: null, color: "#ffffff"},
+      missile: {occupant: null, color: "#ffffff"},
+    };
     score = 0;
     
     // 만약 다시 몬스터 스폰도 처음부터 시작하고 싶다면,
@@ -425,6 +431,7 @@ io.on("connection", (socket) => {
   socket.on("playerMove", (playerPos) => {
     // data = { playerPos, } (프론트엔드에서 보내준다고 가정)
     if (players[socket.id]) {
+      // 잡은 조종석이 없으면 플레이어 이동
       if(!controlAssignments[socket.id]){
         players[socket.id].x = playerPos.x;
         players[socket.id].y = playerPos.y;
@@ -476,9 +483,11 @@ io.on("connection", (socket) => {
 
   //5) 컨트롤 잡기
   socket.on("acquireControl",(data)=>{
+    // 플레이어가 잡은 조종석 목록에 해당 조종권한 할당
     controlAssignments[socket.id]=data.controlType;
 
     seatStates[data.controlType].occupant=socket.id;
+    //조종석 색깔을 잡은 플레이어 색깔로 변경
     if(players[socket.id]){
       seatStates[data.controlType].color=players[socket.id].color;
     }else{
@@ -487,7 +496,7 @@ io.on("connection", (socket) => {
     //console.log(`socket ${socket.id} is controlling: ${data.controlType}`);
   });
 
-  //6) 컨트롤 놓기기
+  //6) 컨트롤 놓기(해당 플레이어가 잡은 조종석 해제)
   socket.on("releaseControl",()=>{
     //console.log(`socket ${socket.id} released control`);
     controlAssignments[socket.id]=null;
