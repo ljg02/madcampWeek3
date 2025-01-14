@@ -262,7 +262,7 @@ function World() {
 
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [weaponAngle, missileAngle, shipPos, currentControl, socket]);
+  }, [weaponAngle, missileAngle, ship, currentControl, socket]);
 
   useEffect(() => {
     const disableContextMenu = (e) => e.preventDefault();
@@ -505,8 +505,8 @@ function World() {
       //4) 컨트롤 위치
       CONTROL_ROOMS.forEach(room=>{
 
-        const globalX=shipPos.x+room.x;
-        const globalY=shipPos.y+room.y;
+        const globalX=ship.x+room.x;
+        const globalY=ship.y+room.y;
 
         const drawX=globalX-cameraOffset.x;
         const drawY=globalY-cameraOffset.y;
