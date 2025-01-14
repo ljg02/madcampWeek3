@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import GameMap from "../monster/monster.js";
+import monster1 from "../spacemonster1.png";
+import monster2 from "../spacemonster2.png";
+import monster3 from "../spacemonster3.png";
+import monster4 from "../spacemonster4.png";
+import monster5 from "../spacemonster5.png";
+import monster6 from "../spacemonster6.png";
+import monster7 from "../spacemonster7.png";
 
 function World() {
   const [socket, setSocket] = useState(null);
@@ -32,8 +39,26 @@ function World() {
   // ---------------------------
   const [bullets, setBullets] = useState([]);
 
+   // ---------------------------
+  //  미사일일 목록(각 총알의 글로벌 좌표)
+  // ---------------------------
+  const [missiles, setMissiles]=useState([]);
+
   // 몬스터 목록
   const [monsters, setMonsters] = useState([]);
+  const monsterImages=[monster1, monster2, monster3, monster4, monster5, monster6, monster7];
+
+  const loadMonsterImages=()=>{
+    return monsterImages.map((src)=>{
+      const img=new Image();
+      img.src=src;
+      return img;
+    });
+  };
+
+  useEffect(()=>{
+    const images=loadMonsterImages();
+  },[]);
 
   // ---------------------------
   // 5) 우주선, 플레이어 크기
@@ -51,7 +76,8 @@ function World() {
     y: window.innerHeight / 2,
   });
 
-  const canvasRef = useRef(null);
+  const canvasRef=useRef(null);
+
 
   // ---------------------------------------------------------
   // (A) 브라우저 창 크기 변화 감지 -> 화면 중앙 재계산
@@ -191,12 +217,47 @@ function World() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [socket]);
 
+  useEffect(() => {
+    const disableContextMenu = (e) => e.preventDefault();
+    window.addEventListener("contextmenu", disableContextMenu);
+    return () => window.removeEventListener("contextmenu", disableContextMenu);
+  }, []);
+  
   // ---------------------------------------------------------
   // (G) 마우스 클릭 -> 총알 발사 (월드 좌표)
   // ---------------------------------------------------------
   useEffect(() => {
-    const handleMouseDown = () => {
+    const handleMouseDown = (e) => {
       const angleRad = (weaponAngle * Math.PI) / 180;
+
+      if(e.button===1){
+        const turretDist = SHIP_RADIUS + TURRET_HEIGHT; // 우주선 표면보다 조금 바깥
+      const missileX = turretDist * Math.cos(angleRad);
+      const missileY = turretDist * Math.sin(angleRad);
+
+      const worldX = shipPos.x + missileX;
+      const worldY = shipPos.y + missileY;
+
+      // 총알의 발사 당시 글로벌 좌표
+      const newMissile = {
+        x: worldX,
+        y: worldY,
+        angleRad,
+        speed: BULLET_SPEED/2,
+        radius: BULLET_RADIUS*2,
+        exploded: false,
+        explosionRadius: 0,
+        explosionMaxRadius: 100,
+        explosionPhase: 0,
+        mileage: 0, //총알이 주행한 거리
+      };
+
+      //setBullets((prev) => [...prev, newBullet]);
+      if(socket) {
+        socket.emit("launchMissile", newMissile);
+      }
+      }
+      if(e.button===0){
       // 포탑 끝에서 발사한다고 가정
       const turretDist = SHIP_RADIUS + TURRET_HEIGHT; // 우주선 표면보다 조금 바깥
       const bulletX = turretDist * Math.cos(angleRad);
@@ -221,10 +282,14 @@ function World() {
       if(socket) {
         socket.emit("shootBullet", newBullet);
       }
+    }
     };
 
+
     window.addEventListener("mousedown", handleMouseDown);
-    return () => window.removeEventListener("mousedown", handleMouseDown);
+    return () => {
+      window.removeEventListener("mousedown", handleMouseDown);
+    };
   }, [weaponAngle, shipPos, socket]);
 
   //서버와 연결하고 매 프레임마다 객체들의 좌표 정보 받아오기
@@ -241,6 +306,7 @@ function World() {
       setPlayerPos(data.players[newSocket.id]);
       setWeaponAngle(data.weaponAngle);
       setBullets(data.bullets);
+      setMissiles(data.missiles);
       setMonsters(data.monsters);
     });
 
@@ -275,13 +341,56 @@ function World() {
         ctx.fill();
       });
 
+      //2-1) 미사일 그리기
+      missiles.forEach((missile)=>{
+          const drawX=missile.x-cameraOffset.x;
+          const drawY=missile.y-cameraOffset.y;
+
+          if(missile.exploded){
+          ctx.beginPath();
+          ctx.arc(
+            drawX,
+            drawY, 
+            missile.explosionRadius, 
+            0, 
+            2*Math.PI, 
+            false
+          );
+          ctx.fillStyle=`rgba(255, 165, 0, ${1 - missile.explosionPhase})`;
+          ctx.fill();
+
+          missile.explosionRadius+=5;
+          missile.explosionPhase+=0.1;
+      }else{
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, missile.radius, 0, 2*Math.PI,false);
+        ctx.fillStyle="green";
+        ctx.fill();
+      }
+    });
+
       // 3) 몬스터 그리기
       monsters.forEach((monster) => {
         const drawX = monster.x - cameraOffset.x - monster.radius;
         const drawY = monster.y - cameraOffset.y - monster.radius;
 
-        ctx.fillStyle = 'green';
-        ctx.fillRect(drawX, drawY, monster.radius*2, monster.radius*2);
+        // ctx.fillStyle = 'green';
+        // ctx.fillRect(drawX, drawY, monster.radius*2, monster.radius*2);
+        if(!monster.imageIndex){
+          monster.imageIndex=Math.floor(Math.random()*monsterImages.length);
+        }
+
+        const monsterImage=monsterImages[monster.imageIndex];
+        
+        if(monsterImage instanceof HTMLImageElement){
+          ctx.drawImage(monsterImage, drawX, drawY, monster.radius*2, monster.radius*2);
+        }else{
+          console.error("invalid monster image:", monsterImage);
+        }
+
+        ctx.fillStyle="red";
+        const hpBarWidth=(monster.hp/10)*(monster.radius*1.5);
+        ctx.fillRect(drawX, drawY-10, hpBarWidth, 5);
       });
 
       // (추가) 필요하다면 우주선, 플레이어도 여기서 그림
@@ -299,6 +408,18 @@ function World() {
       cancelAnimationFrame(animationId);
     };
   }, [bullets, cameraOffset]);
+
+  // ---------------------------------------------------------
+  // (I) 몬스터 이미지 가져오기기
+  // ---------------------------------------------------------
+  // useEffect(()=>{
+  //   const imageCount=7;
+  //   for(let i=0;i<imageCount;i++){
+  //     const img=new Image();
+  //     img.src=`../spacemonster${i+1}.png`;
+  //     monsterImages.push(img);
+  //   }
+  // },[]);
 
   // ---------------------------------------------------------
   // 렌더링
