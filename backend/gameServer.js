@@ -172,7 +172,22 @@ io.on("connection", (socket) => {
   console.log("새로운 유저 연결:", socket.id);
 
   // 1) 플레이어 등록
-  players[socket.id] = { x: 0, y: 0 };
+  players[socket.id] = {
+    x: 0, y: 0,
+    name: "???",    // 임시
+    color: "#ffffff" // 임시
+  };
+
+  // 플레이어 정보(이름, 색깔) 등록
+  socket.on("joinGame", (data) => {
+    // data = { name, color }
+    // => 이걸 players[socket.id]에 저장
+    if (players[socket.id]) {
+      players[socket.id].name = data.name;
+      players[socket.id].color = data.color;
+    }
+    console.log(`플레이어 등록: ${socket.id}, 이름=${data.name}, 색=${data.color}`);
+  });
 
   // 2) 클라이언트로부터 상태 업데이트 받기
   //    예: 플레이어가 키/마우스 입력을 통해 위치나 각도를 바꿨을 때 emit("playerMove", ...)
