@@ -11,8 +11,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/world" element={<World />} />
-        <Route path="/" element={<Combine />} />
-        <Route path="/main" element={<MainPage />} />
+        <Route path="/combine" element={<Combine />} />
+        <Route path="/" element={<MainPage />} />
         <Route path="/gameover" element={<Gameover />} />
       </Routes>
     </Router>

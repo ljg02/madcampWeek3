@@ -9,7 +9,7 @@ function Gameover() {
     console.log('score: ', location.state);
 
     const handleReStart = () => {
-        navigate("/main");
+        navigate("/");
     };
 
     return (
