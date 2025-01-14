@@ -51,7 +51,7 @@ function World() {
   const [missiles, setMissiles]=useState([]);
 
   // 몬스터 목록
-  const [monsters, setMonsters] = useState([]);
+  // const [monsters, setMonsters] = useState([]);
   const monsterImages=[monster1, monster2, monster3, monster4, monster5, monster6, monster7];
 
   //컨트롤 룸
