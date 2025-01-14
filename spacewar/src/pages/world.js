@@ -47,11 +47,14 @@ function World() {
     // 4) 총알 목록(각 총알의 글로벌 좌표)
     // ---------------------------
     const [bullets, setBullets] = useState([]);
+    const lastBulletFireRef = useRef(0);
 
     // ---------------------------
     //  미사일 목록(글로벌 좌표)
     // ---------------------------
     const [missiles, setMissiles] = useState([]);
+    // 미사일 마지막 발사 시점(타임스탬프) 저장용
+    const lastMissileFireRef = useRef(0);
 
     // 몬스터 목록
     // const [monsters, setMonsters] = useState([]);
@@ -116,13 +119,15 @@ function World() {
     // ---------------------------
     const SHIP_RADIUS = ship.radius;   // 우주선 반지름
     const PLAYER_RADIUS = 15;  // 내부 원 플레이어 반지름
-    const TURRET_WIDTH = 50;  //포탑 길이
+    const TURRET_WIDTH = 40;  //포탑 길이
     const TURRET_HEIGHT = 20; //포탑 두께
     const M_TURRET_WIDTH = 20; //포탑 길이
     const M_TURRET_HEIGHT = 30; //포탑 두께
     const BULLET_SPEED = 30;  //총알 속도
     const BULLET_RADIUS = 5;  //총알 반지름
-    const MISSILE_BLAST_RADIUS = 100; //미사일 폭발 반경
+    const BULLET_COOLDOWN = 200;    //총알 쿨다운 시간
+    const MISSILE_BLAST_RADIUS = 70; //미사일 폭발 반경
+    const MISSILE_COOLDOWN = 1000;  // 미사일 쿨다운 시간 (ms 단위)
 
     // 화면 중앙(정중앙 픽셀 좌표)
     const [screenCenter, setScreenCenter] = useState({
@@ -335,9 +340,20 @@ function World() {
             const worldmX = ship.x + missileX;
             const worldmY = ship.y + missileY;
 
-            // 총알의 발사 당시 글로벌 좌표
+            // 발사 시점(쿨다운 계산용)
+            const now = Date.now();
+            // 투사체 발사 당시 글로벌 좌표 계산
             switch (currentControlRef.current) {
                 case "gun":
+                    // 이전 발사 시점으로부터 COOLDOWN(ms) 미만이면 발사 안 함
+                    if (now - lastBulletFireRef.current < BULLET_COOLDOWN) {
+                        // 쿨다운 중이므로 무시
+                        return;
+                    }
+
+                    // 쿨다운 해제 -> 발사 처리
+                    lastBulletFireRef.current = now;
+
                     const newBullet = {
                         x: worldX,
                         y: worldY,
@@ -352,11 +368,20 @@ function World() {
                     //console.log("fired bullet from gun control");
                     break;
                 case "missile":
+                    // 이전 발사 시점으로부터 COOLDOWN(ms) 미만이면 발사 안 함
+                    if (now - lastMissileFireRef.current < MISSILE_COOLDOWN) {
+                        // 쿨다운 중이므로 무시
+                        return;
+                    }
+
+                    // 쿨다운 해제 -> 발사 처리
+                    lastMissileFireRef.current = now;
+
                     const newMissile = {
                         x: worldmX,
                         y: worldmY,
                         angleRadm,
-                        speed: BULLET_SPEED / 2,
+                        speed: BULLET_SPEED / 3,
                         radius: BULLET_RADIUS * 2,
                         mileage: 0,
                         exploded: false,

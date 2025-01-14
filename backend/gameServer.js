@@ -32,7 +32,6 @@ let seatStates={
 
 //몬스터 크기
 const MONSTER_RADIUS = 10;
-const MISSILE_BLAST_RADIUS=100;
 const MISSILE_DAMAGE=5;
 
 // 우주선에 상대적으로 스폰위치를 랜덤하게 결정, shipPos를 더해 글로벌 좌표계로
