@@ -67,6 +67,20 @@ function World() {
 
   const [currentControl, setCurrentControl]=useState(null);
 
+  //컨틀롤 이펙트
+  const [switchStates, setSwitchStates]=useState({
+    spaceship: {on: false, visible: false},
+    gun: {on: false, visible: false},
+    missile: {on: false, visible: false},
+  });
+
+  //자리 색깔
+  const [seatStates, setSeatState]=useState({
+    spaceship: {occupant: null, color: "#ffffff"},
+    gun: {occupant: null, color: "#ffffff"},
+    missile: {occupant: null, color: "#ffffff"},
+  });
+
   const loadMonsterImages=()=>{
     return monsterImages.map((src)=>{
       const img=new Image();
@@ -74,6 +88,13 @@ function World() {
       return img;
     });
   };
+
+  function hexToRGBA(hex,alpha){
+    const r= parseInt(hex.slice(1,3),16);
+    const g=parseInt(hex.slice(3,5),16);
+    const b=parseInt(hex.slice(5,7),16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
 
   useEffect(()=>{
     const images=loadMonsterImages();
@@ -358,6 +379,7 @@ function World() {
       setMissiles(data.missiles);
       setMonsters(data.monsters);
       setScore(data.score);
+      setSeatState(data.seatStates);
     });
 
     // 몬스터 피격 이벤트 수신
@@ -528,11 +550,43 @@ function World() {
         const drawX=globalX-cameraOffset.x;
         const drawY=globalY-cameraOffset.y;
 
+        if(switchStates[room.type].visible){
+          const isOn=switchStates[room.type].on;
+
+          const switchX=drawX;
+          const switchY=drawY-(room.radius+20);
+
+          ctx.fillStyle=isOn ? "green":"red";
+          ctx.fillRect(switchX -20, switchY-15, 40,20);
+
+          ctx.fillStyle="white";
+          ctx.font="14px Arial";
+          ctx.fillText(isOn ? "ON": "OFF", switchX-10, switchY);
+        }
+
+        // const globalX=ship.x+room.x;
+        // const globalY=ship.y+room.y;
+
+        // const drawX=globalX-cameraOffset.x;
+        // const drawY=globalY-cameraOffset.y;
+        const seatColor=seatStates[room.type]?.color||"#ffffff";
+        const dx=playerPos.x-room.x;
+        const dy=playerPos.y-room.y;
+
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        let seatAlpha=0.4;
+        if(dist<=room.radius && seatColor==="#ffffff"){
+          seatAlpha=0.7;
+        }else{
+          seatAlpha=0.4;
+        }
+
+        const seatColorWithAlpha=hexToRGBA(seatColor, seatAlpha);
+
         ctx.beginPath();
         ctx.arc(drawX, drawY, room.radius, 0, 2*Math.PI);
-        ctx.strokeStyle="white";
-        ctx.lineWidth=2;
-        ctx.stroke();
+        ctx.fillStyle=seatColorWithAlpha;
+        ctx.fill();
 
         ctx.fillStyle="yellow";
         ctx.font = "12px Orbitron, sans-serif"; // 커스텀 폰트 사용
@@ -667,7 +721,23 @@ function World() {
         const dist=Math.sqrt(dx*dx+dy*dy);
 
         if(dist<=room.radius && !currentControl){
-          //console.log(`Press Q to acces the ${room.type} control room.`);
+          setSwitchStates((prev)=>{
+            if(prev[room.type].visible && !prev[room.type].on){
+              return prev;
+            }
+            return{
+              ...prev,
+              [room.type]:{...prev[room.type], on: false, visible: true},
+            };
+          });
+        }else if (dist>room.radius){
+          setSwitchStates((prev)=>{
+            if(!prev[room.type].visible){return prev;}
+            return{
+              ...prev,
+              [room.type]: {...prev[room.type], visible: false},
+            };
+          });
         }
       });
     };
@@ -690,6 +760,18 @@ function World() {
           if(dist<=room.radius){
             setCurrentControl(room.type);
             //console.log(`Entered the ${room.type} control room`);
+            setSwitchStates((prev)=>({
+              ...prev,
+              [room.type]: {on: true, visible: true},
+            }));
+
+            setTimeout(()=>{
+              setSwitchStates((prev)=>({
+                ...prev,
+                [room.type]:{on: true, visible: false},
+              }));
+            },500);
+
             if(socket){
               socket.emit("acquireControl",{controlType: room.type});
             }
@@ -698,6 +780,18 @@ function World() {
       }
 
         else if(event.key==="e" && currentControl){
+          setSwitchStates((prev)=>({
+            ...prev,
+            [currentControl]: {on: false, visible: true},
+          }));
+
+          setTimeout(()=>{
+            setSwitchStates((prev)=>({
+              ...prev,
+              [currentControl]: {...prev[currentControl], visible: false},
+            }));
+          },1000);
+
           setCurrentControl(null);
           if(socket){
             socket.emit("releaseControl");
