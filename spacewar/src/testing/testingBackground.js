@@ -447,6 +447,7 @@ function World() {
         //   console.error("invalid monster image:", monsterImage);
         // }
 
+        //몬스터 hp바
         ctx.fillStyle="red";
         const hpBarWidth=(monster.hp/3)*(monster.radius*2);
         ctx.fillRect(drawX, drawY-10, hpBarWidth, 5);
@@ -499,6 +500,20 @@ function World() {
         ctx.font = "14px Arial";
         ctx.fillText(player.name, drawX - 10, drawY - 20); 
       });
+
+      // 5) 우주선 그리기
+      const drawShipX = ship.x - cameraOffset.x;
+      const drawShipY = ship.y - cameraOffset.y;
+
+    //   ctx.fillStyle = "rgba(0,255,0,0.2)";
+    //   ctx.beginPath();
+    //   ctx.arc(drawShipX, drawShipY, SHIP_RADIUS, 0, 2*Math.PI);
+    //   ctx.fill();
+
+      // 우주선 hp
+      ctx.fillStyle="red";
+      const hpBarWidth=(ship.hp/10)*(SHIP_RADIUS*2);
+      ctx.fillRect(drawShipX-SHIP_RADIUS, drawShipY+SHIP_RADIUS+10, hpBarWidth, 10);
 
       // (추가) 필요하다면 우주선, 플레이어도 여기서 그림
       // 우주선을 캔버스에 그리려면, 우주선 중심/반지름 정보를 사용:
