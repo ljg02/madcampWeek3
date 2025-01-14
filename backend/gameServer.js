@@ -23,6 +23,12 @@ let controlAssignments={};
 
 let score = 0;  //점수(모든 플레이어가 공유)
 
+let seatStates={
+  spaceship: {occupant: null, color: "#ffffff"},
+  gun: {occupant: null, color: "#ffffff"},
+  missile: {occupant: null, color: "#fffffff"},
+};
+
 //몬스터 크기
 const MONSTER_RADIUS = 10;
 const MISSILE_BLAST_RADIUS=100;
@@ -306,6 +312,7 @@ setInterval(() => {
     missiles, 
     monsters,
     score,
+    seatStates,
    });
 }, 10);
 
@@ -399,6 +406,13 @@ io.on("connection", (socket) => {
   //5) 컨트롤 잡기
   socket.on("acquireControl",(data)=>{
     controlAssignments[socket.id]=data.controlType;
+
+    seatStates[data.controlType].occupant=socket.id;
+    if(players[socket.id]){
+      seatStates[data.controlType].color=players[socket.id].color;
+    }else{
+      seatStates[data.controlType].color="#ffffff";
+    }
     //console.log(`socket ${socket.id} is controlling: ${data.controlType}`);
   });
 
@@ -406,6 +420,12 @@ io.on("connection", (socket) => {
   socket.on("releaseControl",()=>{
     //console.log(`socket ${socket.id} released control`);
     controlAssignments[socket.id]=null;
+    for(let seat in seatStates){
+      if(seatStates[seat].occupant===socket.id){
+        seatStates[seat].occupant=null;
+        seatStates[seat].color="#ffffff";
+      }
+    }
   })
 
   // 6) 연결 해제
