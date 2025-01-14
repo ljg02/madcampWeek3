@@ -200,7 +200,6 @@ setInterval(() => {
 
     // 우주선과의 충돌 확인
     if(!isMonsterDead) {
-      let shipHitMonster = [];
       let isGameOver = false;
       const dx = ship.x - monster.x;
       const dy = ship.y - monster.y;
@@ -208,6 +207,7 @@ setInterval(() => {
     
       if (dist <= (ship.radius + monster.radius)) {
           ship.hp-=1;
+          io.emit("shipHit");
 
           // 우주선 hp가 0이면 게임오버
           if(ship.hp<=0){
