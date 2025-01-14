@@ -10,12 +10,15 @@ import monster5 from "../spacemonster5.png";
 import monster6 from "../spacemonster6.png";
 import monster7 from "../spacemonster7.png";
 
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 function World() {
+  const navigate = useNavigate();
   const [socket, setSocket] = useState(null);
   //0) 우주선 월드 좌표
-  const [shipPos, setShipPos] = useState({ x: 0, y: 0});
+  const [ship, setShip] = useState({ x: 0, y: 0, hp: 10, radius: 150 });
+  // 우주선 피격 이펙트 상태
+  const [shipHit, setShipHit] = useState([]);
 
   // ---------------------------
   // 1) 플레이어 (우주선 로컬 좌표계)
@@ -52,6 +55,7 @@ function World() {
 
   // 몬스터 목록
   // const [monsters, setMonsters] = useState([]);
+  // 몬스터 이미지 목록
   const monsterImages=[monster1, monster2, monster3, monster4, monster5, monster6, monster7];
 
   //컨트롤 룸
@@ -78,12 +82,14 @@ function World() {
   // 몬스터 목록(각 몬스터들의 글로벌 좌표)
   const [monsters, setMonsters] = useState([]);
   // 몬스터 처치 이펙트 상태
+  const [monsterBulletHit, setMonsterBulletHit] = useState([]);
+  // 몬스터 처치 이펙트 상태
   const [monsterDead, setMonsterDead] = useState([]);
 
   // ---------------------------
   // 5) 우주선, 플레이어 크기
   // ---------------------------
-  const SHIP_RADIUS = 150;   // 우주선 반지름
+  const SHIP_RADIUS = ship.radius;   // 우주선 반지름
   const PLAYER_RADIUS = 15;  // 내부 원 플레이어 반지름
   const TURRET_WIDTH = 50;  //포탑 두께
   const TURRET_HEIGHT = 20; //포탑 길이
@@ -102,6 +108,9 @@ function World() {
   const location = useLocation();
   // 메인 페이지에서 넘어온 name, color
   const { name, color } = location.state || { name: "Unknown", color: "#ff0000" };
+
+  //점수
+  const [score, setScore] = useState(0); 
 
   // ---------------------------------------------------------
   // (A) 브라우저 창 크기 변화 감지 -> 화면 중앙 재계산
@@ -184,7 +193,7 @@ function World() {
       // 우주선 경계 내부 플레이어 제한
       // (우주선 반지름 150 - 플레이어 반지름 25 = 125까지 가능)
       const dist = Math.sqrt(x * x + y * y);
-      const maxDist = SHIP_RADIUS - PLAYER_RADIUS;
+      const maxDist = ship.radius - PLAYER_RADIUS;
       if (dist > maxDist) {
         const scale = maxDist / dist;
         x *= scale;
@@ -207,10 +216,10 @@ function World() {
   // ---------------------------------------------------------
   useEffect(() => {
     setCameraOffset({
-      x: shipPos.x - screenCenter.x,
-      y: shipPos.y - screenCenter.y,
+      x: ship.x - screenCenter.x,
+      y: ship.y - screenCenter.y,
     });
-  }, [shipPos, screenCenter]);
+  }, [ship, screenCenter]);
 
   // ---------------------------------------------------------
   // (F) 마우스 움직임에 따라 무기(포탑) 각도 계산
@@ -269,7 +278,8 @@ function World() {
       const angleRad = (weaponAngle * Math.PI) / 180;
       const angleRadm=(missileAngle*Math.PI)/180;
 
-      const turretDist = SHIP_RADIUS + TURRET_HEIGHT; // 우주선 표면보다 조금 바깥
+      // 포탑 끝에서 발사한다고 가정
+      const turretDist = ship.radius + TURRET_HEIGHT; // 우주선 표면보다 조금 바깥
       const bulletX = turretDist * Math.cos(angleRad);
       const bulletY = turretDist * Math.sin(angleRad);
 
@@ -278,11 +288,11 @@ function World() {
 
       // bulletX, bulletY는 "우주선 중심 (0,0) 기준"
       // 우주선 월드 좌표가 (uwx, uwy)라면:
-      const worldX = shipPos.x + bulletX;
-      const worldY = shipPos.y + bulletY;
+      const worldX = ship.x + bulletX;
+      const worldY = ship.y + bulletY;
 
-      const worldmX=shipPos.x+missileX;
-      const worldmY=shipPos.y+missileY;
+      const worldmX=ship.x+missileX;
+      const worldmY=ship.y+missileY;
 
       // 총알의 발사 당시 글로벌 좌표
       switch(currentControl){
@@ -321,7 +331,7 @@ function World() {
     return () => {
       window.removeEventListener("mousedown", handleMouseDown);
     };
-  }, [weaponAngle, missileAngle, shipPos, currentControl, socket]);
+  }, [weaponAngle, missileAngle, ship, currentControl, socket]);
 
   //서버와 연결하고 매 프레임마다 객체들의 좌표 정보 받아오기
   useEffect(() => {
@@ -338,7 +348,7 @@ function World() {
 
     // 3) 매 프레임마다 서버가 보내주는 'updateGameState' 이벤트 수신
     newSocket.on("updateGameState", (data) => {
-      setShipPos(data.shipPos);
+      setShip(data.ship);
       setPlayerPos(data.players[newSocket.id]);
       setPlayers(data.players);
       setWeaponAngle(data.weaponAngle);
@@ -347,6 +357,18 @@ function World() {
       setMissiles(data.missiles);
       setMonsters(data.monsters);
     });
+
+    // 몬스터 피격 이벤트 수신
+    newSocket.on("monsterBulletHit", (monsterBulletHitEffect) => {
+        const newEffect = {
+          x: monsterBulletHitEffect.x,
+          y: monsterBulletHitEffect.y,
+          startTime: Date.now(),
+          duration: 300, // 피격 이펙트 지속 시간 (밀리초 단위)
+          radius: monsterBulletHitEffect.radius,
+        };
+        setMonsterBulletHit((prev) => [...prev, newEffect]);
+      });
 
     // 몬스터 폭발 이벤트 수신
     newSocket.on("monsterDead", (monsterDeadEffect) => {
@@ -358,19 +380,42 @@ function World() {
           radius: monsterDeadEffect.radius,
         };
         setMonsterDead((prev) => [...prev, newEffect]);
-      });
+    });
+
+    // 우주선 피격 이벤트 수신
+    newSocket.on("shipHit", () => {
+        const newEffect = {
+            x: ship.x,
+            y: ship.y,
+            startTime: Date.now(),
+            duration: 200, // 데미지 이펙트 지속 시간 (밀리초 단위)
+            radius: ship.radius,
+        };
+        setShipHit((prev) => [...prev, newEffect]);
+    });
+
+    // 게임오버 이벤트 수신
+    newSocket.on("gameover", () => {
+        navigate("/gameover", { state: { score: score } });
+    })
 
     return () => {
       newSocket.disconnect();
     };
   }, []);
 
-  // 수명이 다한 몬스터 폭발 이펙트 제거
+  // 수명이 다한 이펙트 제거
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
+      setMonsterBulletHit((prev) =>
+        prev.filter((monsterBulletHitEffect) => now - monsterBulletHitEffect.startTime < monsterBulletHitEffect.duration)
+      );
       setMonsterDead((prev) =>
         prev.filter((monsterDeadEffect) => now - monsterDeadEffect.startTime < monsterDeadEffect.duration)
+      );
+      setShipHit((prev) =>
+        prev.filter((shipHitEffect) => now - shipHitEffect.startTime < shipHitEffect.duration)
       );
     }, 100);
 
@@ -437,22 +482,23 @@ function World() {
         const drawX = monster.x - cameraOffset.x - monster.radius;
         const drawY = monster.y - cameraOffset.y - monster.radius;
 
-        // ctx.fillStyle = 'green';
-        // ctx.fillRect(drawX, drawY, monster.radius*2, monster.radius*2);
-        if(!monster.imageIndex){
-          monster.imageIndex=Math.floor(Math.random()*monsterImages.length);
-        }
+        ctx.fillStyle = 'green';
+        ctx.fillRect(drawX, drawY, monster.radius*2, monster.radius*2);
+        // if(!monster.imageIndex){
+        //   monster.imageIndex=Math.floor(Math.random()*monsterImages.length);
+        // }
 
-        const monsterImage=monsterImages[monster.imageIndex];
+        // const monsterImage=monsterImages[monster.imageIndex];
         
-        if(monsterImage instanceof HTMLImageElement){
-          ctx.drawImage(monsterImage, drawX, drawY, monster.radius*2, monster.radius*2);
-        }else{
-          console.error("invalid monster image:", monsterImage);
-        }
+        // if(monsterImage instanceof HTMLImageElement){
+        //   ctx.drawImage(monsterImage, drawX, drawY, monster.radius*2, monster.radius*2);
+        // }else{
+        //   console.error("invalid monster image:", monsterImage);
+        // }
 
+        //몬스터 hp바
         ctx.fillStyle="red";
-        const hpBarWidth=(monster.hp/10)*(monster.radius*1.5);
+        const hpBarWidth=(monster.hp/3)*(monster.radius*2);
         ctx.fillRect(drawX, drawY-10, hpBarWidth, 5);
       });
 
@@ -474,12 +520,27 @@ function World() {
         ctx.fillStyle="yellow";
         ctx.fillText(room.type, drawX-10, drawY-room.radius -5);
       });
+      
+      // 몬스터 피격 이펙트 그리기
+      monsterBulletHit.forEach((monsterBulletHitEffect) => {
+        const drawX = monsterBulletHitEffect.x - cameraOffset.x;
+        const drawY = monsterBulletHitEffect.y - cameraOffset.y;
+        const progress = (Date.now() - monsterBulletHitEffect.startTime) / monsterBulletHitEffect.duration;
+        if (progress < 1) {
+          const alpha = (1 - progress)*0.5; // 점점 투명해짐
+          const size = monsterBulletHitEffect.radius + progress*10; // 점점 커짐
+
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`; // 주황색
+          ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      });
 
       // 몬스터 폭발 이펙트 그리기
-      console.log(monsterDead);
       monsterDead.forEach((monsterDeadEffect) => {
-        const drawX = monsterDeadEffect.x - cameraOffset.x - monsterDeadEffect.radius;
-        const drawY = monsterDeadEffect.y - cameraOffset.y - monsterDeadEffect.radius;
+        const drawX = monsterDeadEffect.x - cameraOffset.x;
+        const drawY = monsterDeadEffect.y - cameraOffset.y;
         const progress = (Date.now() - monsterDeadEffect.startTime) / monsterDeadEffect.duration;
         if (progress < 1) {
           const alpha = (1 - progress)*0.8; // 점점 투명해짐
@@ -494,8 +555,8 @@ function World() {
 
       // 4) 플레이어 그리기
       Object.values(players).forEach((player) => {
-        const drawX = player.x + shipPos.x - cameraOffset.x;
-        const drawY = player.y + shipPos.y - cameraOffset.y;
+        const drawX = player.x + ship.x - cameraOffset.x;
+        const drawY = player.y + ship.y - cameraOffset.y;
 
         ctx.fillStyle = player.color;
         ctx.beginPath();
@@ -506,6 +567,36 @@ function World() {
         ctx.fillStyle = "#fff";
         ctx.font = "14px Arial";
         ctx.fillText(player.name, drawX - 10, drawY - 20); 
+      });
+
+      // 5) 우주선 그리기
+      const drawShipX = ship.x - cameraOffset.x;
+      const drawShipY = ship.y - cameraOffset.y;
+
+    //   ctx.fillStyle = "rgba(0,255,0,0.2)";
+    //   ctx.beginPath();
+    //   ctx.arc(drawShipX, drawShipY, SHIP_RADIUS, 0, 2*Math.PI);
+    //   ctx.fill();
+
+      // 우주선 hp
+      ctx.fillStyle="red";
+      const hpBarWidth=(ship.hp/10)*(ship.radius*2);
+      ctx.fillRect(drawShipX-ship.radius, drawShipY+ship.radius+10, hpBarWidth, 10);
+
+      // 우주선 피격 이펙트 그리기
+      shipHit.forEach((shipHitEffect) => {
+        const drawX = ship.x - cameraOffset.x;
+        const drawY = ship.y - cameraOffset.y;
+        const progress = (Date.now() - shipHitEffect.startTime) / shipHitEffect.duration;
+        if (progress < 1) {
+          const alpha = (1 - progress)*0.6; // 점점 투명해짐
+          const size = shipHitEffect.radius; // 크기 고정
+
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;  //빨간색
+          ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
+          ctx.fill();
+        }
       });
 
       // (추가) 필요하다면 우주선, 플레이어도 여기서 그림
@@ -616,16 +707,16 @@ function World() {
       <div
         style={{
           position: "absolute",
-          width: SHIP_RADIUS * 2,
-          height: SHIP_RADIUS * 2,
+          width: ship.radius * 2,
+          height: ship.radius * 2,
           borderRadius: "50%",
           backgroundColor: "rgba(0,255,0,0.2)",
           border: "2px solid green",
           left: 0,
           top: 0,
           transform: `translate(
-            ${shipPos.x - cameraOffset.x - SHIP_RADIUS}px,
-            ${shipPos.y - cameraOffset.y - SHIP_RADIUS}px
+            ${ship.x - cameraOffset.x - ship.radius}px,
+            ${ship.y - cameraOffset.y - ship.radius}px
           )`,
         }}
       >
@@ -648,8 +739,8 @@ function World() {
         /> */}
 
         {/* (3) 우주선 표면 포탑 */}
-        <Turret angle={weaponAngle} shipRadius={SHIP_RADIUS} turretWidth={TURRET_WIDTH} turretHeight={TURRET_HEIGHT} />
         <MissileTurret angle={missileAngle} shipRadius={SHIP_RADIUS} turretWidth={TURRET_WIDTH} turretHeight={TURRET_HEIGHT}/>
+        <Turret angle={weaponAngle} shipRadius={ship.radius} turretWidth={TURRET_WIDTH} turretHeight={TURRET_HEIGHT} />
       </div>
 
       {/* 기존 총알 그리던 부분 */}

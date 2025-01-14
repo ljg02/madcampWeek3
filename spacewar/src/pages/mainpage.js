@@ -77,7 +77,7 @@ function MainPage() {
                 onClick={handleStart}
                 style={{
                     width: "200px",
-                    height: "30px",
+                    height: "50px",
                     position: "relative",
                     overflow: "hidden",
                     marginBottom: "10px",

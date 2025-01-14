@@ -6,7 +6,8 @@ import GameMap from './monster/monster.js';
 import Combine from './mapmonster/combine.js';
 import World from './testing/testingBackground.js';
 import Game from './testing/testingClient.js';
-import MainPage from './mainpage/mainpage.js'
+import MainPage from './pages/mainpage.js';
+import Gameover from './pages/gameover.js';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
         <Route path="/" element={<Combine />} />
         <Route path="/client" element={<Game />} />
         <Route path="/main" element={<MainPage />} />
+        <Route path="/gameover" element={<Gameover />} />
       </Routes>
     </Router>
   );

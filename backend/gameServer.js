@@ -13,16 +13,16 @@ const io = new Server(server, {
 
 // --- 게임 월드 상태 예시 ---
 let players = {}; // 플레이어 목록 { socket.id: { x: 0, y: 0 } }
-let shipPos = { x: 0, y: 0};  //우주선 위치 { x: 0, y: 0 }
-let weaponAngle;    //turret 각도
-let missileAngle;
+let missileAngle = 0;
+let ship = { x: 0, y: 0, hp: 10, radius: 150};   //우주선 상태(위치, hp)
+let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
 let missiles=[];
 let monsters = [];
 
 let controlAssignments={};
 
-//몬스터 크기기
+//몬스터 크기
 const MONSTER_RADIUS = 10;
 const MISSILE_BLAST_RADIUS=100;
 const MISSILE_DAMAGE=5;
@@ -33,8 +33,8 @@ function spawnMonsterOnEdge(angle) {
   const angleRad = (angle * Math.PI) / 180;
  
   return {
-    x: radius * Math.cos(angleRad) + shipPos.x,
-    y: radius * Math.sin(angleRad) + shipPos.y
+    x: radius * Math.cos(angleRad) + ship.x,
+    y: radius * Math.sin(angleRad) + ship.y
   };
 }
 
@@ -51,7 +51,7 @@ function startSpawningMonsters() {
         frameInterval: Math.floor(Math.random() * 50) + 20,
         frameCount: 0,
         radius: MONSTER_RADIUS,
-        hp: Math.floor(Math.random()*10)+1,
+        hp: 3,
       };
   
       // Add the new monster to the array
@@ -62,16 +62,14 @@ function startSpawningMonsters() {
       if(monsters.length > 10) return;
       spawnMonster(); // Spawn one monster
   
-      // Set a random interval for the next spawn (between 1 and 5 seconds)
-      const nextSpawnTime = Math.random() * 4000 + 3000;
+      // Set a random interval for the next spawn (between 3 and 5 seconds)
+      const nextSpawnTime = Math.random() * 2000 + 3000;
       setTimeout(spawnAtRandomInterval, nextSpawnTime);
     }
   
-    // Start the spawning loop after 5s
-    setTimeout(spawnAtRandomInterval, 5000);
+    // Start the spawning loop after 3s
+    setTimeout(spawnAtRandomInterval, 3000);
   }
-
-startSpawningMonsters();
 
 // 주기적으로 총알 이동 & 몬스터 이동 & 게임 상태 갱신(서버 사이드 게임 루프 예시)
 setInterval(() => {
@@ -102,8 +100,8 @@ setInterval(() => {
 
   // 3. 몬스터 움직임에 따른 위치 계산
   monsters = monsters.map((monster) => {
-    let dx= monster.x - shipPos.x;
-    let dy= monster.y - shipPos.y;
+    let dx= monster.x - ship.x;
+    let dy= monster.y - ship.y;
 
     const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
 
@@ -144,10 +142,12 @@ setInterval(() => {
   let collidedBulletIndexes = new Set();
   let collideMissileIndexes = new Set();
   let deadMonster = []; // 처치된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
+  let bulletHitMonster = []; // 총알에 피격된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
+  let isGameOver = false;
 
   // 모든 몬스터에 대해 각각 순회하며, 모든 총알과의 위치관계를 확인
   monsters.forEach((monster) => {
-    let isMonsterHit = false;
+    let isMonsterDead = false;
 
     // 총알 배열을 순회하여 충돌 여부 확인
     for (let i = 0; i < bullets.length; i++) {
@@ -161,17 +161,19 @@ setInterval(() => {
       const dy = b.y - monster.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist <= (b.radius + MONSTER_RADIUS)) {
+      if (dist <= (b.radius + monster.radius)) {
         monster.hp-=1;
+        bulletHitMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
+
         // 충돌 발생
         if(monster.hp<=0){
-          isMonsterHit = true;
+          isMonsterDead = true;
+          // 처치 몬스터 정보 저장
+          deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
         }
-        // isMonsterHit = true;
-        // 해당 총알도 제거 표시
+
+        // 해당 총알 제거 표시
         collidedBulletIndexes.add(i);
-        // 처치 몬스터 정보 저장
-        deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
         // 이번 monster도 루프 중단
         break;
       }
@@ -186,7 +188,7 @@ setInterval(() => {
       const my=m.y-monster.y;
       const mist=Math.sqrt(mx*mx+my*my);
 
-      if(mist<=(m.radius+MONSTER_RADIUS)){
+      if(mist<=(m.radius+monster.radius)){
         m.exploded=true;
         collideMissileIndexes.add(j);
       }
@@ -194,14 +196,34 @@ setInterval(() => {
       if(m.exploded&&mist<=MISSILE_BLAST_RADIUS){
         monster.hp-=5;
         if(monster.hp<=0){
-          isMonsterHit=true;
+          isMonsterDead=true;
         }
         break;
       }
     }
 
-    // 충돌 안 된 몬스터만 newMonsters에 넣음
-    if (!isMonsterHit) {
+    // 우주선과의 충돌 확인
+    if(!isMonsterDead) {
+      const dx = ship.x - monster.x;
+      const dy = ship.y - monster.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+    
+      if (dist <= (ship.radius + monster.radius)) {
+          ship.hp-=1;
+          io.emit("shipHit");
+
+          // 우주선 hp가 0이면 게임오버
+          if(ship.hp<=0){
+          isGameOver = true;
+          }
+
+          // 해당 몬스터 사망 처리
+          isMonsterDead = true;
+      }
+    }
+
+    // 죽지 않은 몬스터만 newMonsters에 넣음
+    if (!isMonsterDead) {
       newMonsters.push(monster);
     }
   });
@@ -219,25 +241,31 @@ setInterval(() => {
   bullets = newBullets;
   missiles=newMissiles;
 
-
-  // 5. 폭발 정보 브로드캐스트
-  deadMonster.forEach((monster) => {
-    io.emit("monsterDead", monster); // 각 폭발에 대해 이벤트 전송
+  // 5. 총알 피격 정보 브로드캐스트
+  bulletHitMonster.forEach((monster) => {
+    io.emit("monsterBulletHit", monster); // 각 피격에 대해 이벤트 전송
   });
 
-  // 6. 모든 클라이언트에게 최신 상태를 브로드캐스트
+  // 6. 처치 정보 브로드캐스트
+  deadMonster.forEach((monster) => {
+    io.emit("monsterDead", monster); // 각 처치에 대해 이벤트 전송
+  });
+
+  // 7. 게임 오버 브로드캐스트
+  if(isGameOver) {
+    io.emit("gameover");
+  }
+
+  // 8. 모든 클라이언트에게 최신 상태를 브로드캐스트
   //io.emit("updateGameState", { players, shipPos, weaponAngle, bullets, monsters });
   io.emit("updateGameState", { 
     players, 
-    shipPos, 
+    ship, 
     weaponAngle,
     missileAngle, 
     bullets,
     missiles, 
-    monsters: monsters.map((monster)=>({
-      ...monster,
-      hp: monster.hp,
-    })),
+    monsters,
    });
 }, 10);
 
@@ -263,6 +291,9 @@ io.on("connection", (socket) => {
     console.log(`플레이어 등록: ${socket.id}, 이름=${data.name}, 색=${data.color}`);
   });
 
+  // 몬스터 스폰 시작
+  startSpawningMonsters();
+
   // 2) 클라이언트로부터 상태 업데이트 받기
   //    예: 플레이어가 키/마우스 입력을 통해 위치나 각도를 바꿨을 때 emit("playerMove", ...)
   socket.on("playerMove", (playerPos) => {
@@ -279,7 +310,8 @@ io.on("connection", (socket) => {
     if(controlAssignments[socket.id]!=="spaceship"){
       return;
     }
-    let { x, y } = shipPos;
+    let x = ship.x;
+    let y = ship.y;
     const step = 10;
     // WASD
     if (keys['ArrowUp']) y -= step;
@@ -287,7 +319,8 @@ io.on("connection", (socket) => {
     if (keys['ArrowLeft']) x -= step;
     if (keys['ArrowRight']) x += step;
 
-    shipPos = { x, y };
+    ship.x = x;
+    ship.y = y;
   });
 
   socket.on("turretMove", (data) => {
