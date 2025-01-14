@@ -435,21 +435,13 @@ io.on("connection", (socket) => {
     // 여기서는 따로 emit하지 않아도 됨(선택사항)
   });
 
-  socket.on("spaceShipMove", (keys) => {
+  socket.on("spaceShipMove", (shipPos) => {
     if(controlAssignments[socket.id]!=="spaceship"){
       return;
     }
-    let x = ship.x;
-    let y = ship.y;
-    const step = 10;
-    // WASD
-    if (keys['ArrowUp']) y -= step;
-    if (keys['ArrowDown']) y += step;
-    if (keys['ArrowLeft']) x -= step;
-    if (keys['ArrowRight']) x += step;
-
-    ship.x = x;
-    ship.y = y;
+    
+    ship.x = shipPos.x;
+    ship.y = shipPos.y;
   });
 
   socket.on("turretMove", (data) => {

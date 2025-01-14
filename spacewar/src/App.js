@@ -1,6 +1,6 @@
 import React from 'react';
 import './App.css';
-import World from './testing/testingBackground.js';
+import World from './pages/world.js';
 import MainPage from './pages/mainpage.js';
 import Gameover from './pages/gameover.js';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';

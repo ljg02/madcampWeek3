@@ -16,6 +16,7 @@ function World() {
     const [socket, setSocket] = useState(null);
     //0) 우주선 월드 좌표
     const [ship, setShip] = useState({ x: 0, y: 0, hp: 10, radius: 150 });
+    const shipRef = useRef(ship);
     // 우주선 피격 이펙트 상태
     const [shipHit, setShipHit] = useState([]);
 
@@ -188,9 +189,23 @@ function World() {
     //     - 방향키로 이동한다고 가정
     // ---------------------------------------------------------
     useEffect(() => {
+        shipRef.current = ship;
+    }, [ship]);
+    useEffect(() => {
         if (!socket) return; // socket이 null이면 return
         const interval = setInterval(() => {
-            socket.emit("spaceShipMove", keysRef.current);
+            const keys = keysRef.current;
+            let { x, y } = shipRef.current || { x: 0, y: 0 };
+            const step = 10;
+            // WASD
+            if (keys["w"] || keys["W"]) y -= step;
+            if (keys["s"] || keys["S"]) y += step;
+            if (keys["a"] || keys["A"]) x -= step;
+            if (keys["d"] || keys["D"]) x += step;
+
+            if(socket) {
+                socket.emit("spaceShipMove", { x, y });
+            }
         }, 15);
 
         return () => clearInterval(interval);
@@ -206,7 +221,7 @@ function World() {
     useEffect(() => {
         const interval = setInterval(() => {
             const keys = keysRef.current;
-            let { x, y } = playerPosRef.current;
+            let { x, y } = playerPosRef.current || { x: 0, y: 0 };
             const step = 5;
             // WASD
             if (keys["w"] || keys["W"]) y -= step;
