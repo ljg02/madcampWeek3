@@ -36,6 +36,8 @@ function World() {
 
   // 몬스터 목록(각 몬스터들의 글로벌 좌표)
   const [monsters, setMonsters] = useState([]);
+  // 몬스터 처치 이펙트 상태
+  const [monsterDead, setMonsterDead] = useState([]);
 
   // ---------------------------
   // 5) 우주선, 플레이어 크기
@@ -256,9 +258,33 @@ function World() {
       setMonsters(data.monsters);
     });
 
+    // 몬스터 폭발 이벤트 수신
+    newSocket.on("monsterDead", (monsterDeadEffect) => {
+        const newEffect = {
+          x: monsterDeadEffect.x,
+          y: monsterDeadEffect.y,
+          startTime: Date.now(),
+          duration: 500, // 폭발 이펙트 지속 시간 (밀리초 단위)
+          radius: monsterDeadEffect.radius,
+        };
+        setMonsterDead((prev) => [...prev, newEffect]);
+      });
+
     return () => {
       newSocket.disconnect();
     };
+  }, []);
+
+  // 수명이 다한 몬스터 폭발 이펙트 제거
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setMonsterDead((prev) =>
+        prev.filter((monsterDeadEffect) => now - monsterDeadEffect.startTime < monsterDeadEffect.duration)
+      );
+    }, 100);
+
+    return () => clearInterval(interval);
   }, []);
 
   // ---------------------------------------------------------
@@ -294,6 +320,23 @@ function World() {
 
         ctx.fillStyle = 'green';
         ctx.fillRect(drawX, drawY, monster.radius*2, monster.radius*2);
+      });
+
+      // 몬스터 폭발 이펙트 그리기
+      console.log(monsterDead);
+      monsterDead.forEach((monsterDeadEffect) => {
+        const drawX = monsterDeadEffect.x - cameraOffset.x - monsterDeadEffect.radius;
+        const drawY = monsterDeadEffect.y - cameraOffset.y - monsterDeadEffect.radius;
+        const progress = (Date.now() - monsterDeadEffect.startTime) / monsterDeadEffect.duration;
+        if (progress < 1) {
+          const alpha = (1 - progress)*0.8; // 점점 투명해짐
+          const size = monsterDeadEffect.radius * 2 + progress * 10; // 점점 커짐
+
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255, 165, 0, ${alpha})`; // 주황색
+          ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
+          ctx.fill();
+        }
       });
 
       // 4) 플레이어 그리기

@@ -123,7 +123,9 @@ setInterval(() => {
   let newMonsters = [];
   // 어떤 총알이 충돌했는지 추적 (인덱스)
   let collidedBulletIndexes = new Set();
+  let deadMonster = []; // 처치된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
 
+  // 모든 몬스터에 대해 각각 순회하며, 모든 총알과의 위치관계를 확인
   monsters.forEach((monster) => {
     let isMonsterHit = false;
 
@@ -144,6 +146,8 @@ setInterval(() => {
         isMonsterHit = true;
         // 해당 총알도 제거 표시
         collidedBulletIndexes.add(i);
+        // 처치 몬스터 정보 저장
+        deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
         // 이번 monster도 루프 중단
         break;
       }
@@ -163,7 +167,12 @@ setInterval(() => {
   monsters = newMonsters;
   bullets = newBullets;
 
-  // 3. 모든 클라이언트에게 최신 상태를 브로드캐스트
+  // 5. 폭발 정보 브로드캐스트
+  deadMonster.forEach((monster) => {
+    io.emit("monsterDead", monster); // 각 폭발에 대해 이벤트 전송
+  });
+
+  // 6. 모든 클라이언트에게 최신 상태를 브로드캐스트
   io.emit("updateGameState", { players, shipPos, weaponAngle, bullets, monsters });
 }, 10);
 
