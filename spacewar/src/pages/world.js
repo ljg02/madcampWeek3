@@ -483,7 +483,7 @@ function World() {
     }, []);
 
     // ---------------------------------------------------------
-    // (H) Canvas 드로잉 로직 - 총알 그리기
+    // (H) Canvas 드로잉 로직
     // ---------------------------------------------------------
     useEffect(() => {
         let animationId;
@@ -516,7 +516,7 @@ function World() {
 
                 ctx.beginPath();
                 ctx.arc(drawX, drawY, missile.radius, 0, 2 * Math.PI, false);
-                ctx.fillStyle = "green";
+                ctx.fillStyle = "rgba(255, 100, 0, 1)";
                 ctx.fill();
             });
 
@@ -603,7 +603,7 @@ function World() {
                     const size = monsterBulletHitEffect.radius + progress * 10; // 점점 커짐
 
                     ctx.beginPath();
-                    ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`; // 주황색
+                    ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`; // 빨간색
                     ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
                     ctx.fill();
                 }
@@ -619,23 +619,23 @@ function World() {
                     const size = missileEffect.radius + progress * 10;
 
                     ctx.beginPath();
-                    ctx.fillStyle = `rgba(255, 0,0, ${alpha})`;
+                    ctx.fillStyle = `rgba(255, 100, 0, ${alpha})`;
                     ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
                     ctx.fill();
                 }
             })
 
-            // 몬스터 폭발 이펙트 그리기
+            // 몬스터 처치 이펙트 그리기
             monsterDead.forEach((monsterDeadEffect) => {
                 const drawX = monsterDeadEffect.x - cameraOffset.x;
                 const drawY = monsterDeadEffect.y - cameraOffset.y;
                 const progress = (Date.now() - monsterDeadEffect.startTime) / monsterDeadEffect.duration;
                 if (progress < 1) {
-                    const alpha = (1 - progress) * 0.8; // 점점 투명해짐
+                    const alpha = (1 - progress) * 0.7; // 점점 투명해짐
                     const size = monsterDeadEffect.radius + progress * 10; // 점점 커짐
 
                     ctx.beginPath();
-                    ctx.fillStyle = `rgba(255, 255, 0, ${alpha})`; // 노란색
+                    ctx.fillStyle = `rgba(100, 255, 0, ${alpha})`; // 연두색
                     ctx.arc(drawX, drawY, size, 0, 2 * Math.PI);
                     ctx.fill();
                 }
