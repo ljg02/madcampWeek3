@@ -379,6 +379,7 @@ setInterval(() => {
   // 8. 게임 오버 브로드캐스트
   if(isGameOver) {
     io.emit("gameover", score);
+    console.log('gameover: ', score);
     resetGameState();
   }
 
