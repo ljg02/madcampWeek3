@@ -61,8 +61,8 @@ function World() {
   //컨트롤 룸
   const CONTROL_ROOMS=[
     {type: "spaceship", x:0, y:0, radius: 30},
-    {type: "gun", x:60, y:-40, radius: 20},
-    {type: "missile", x: -60, y: -40, radius: 20},
+    {type: "gun", x:100, y:0, radius: 20},
+    {type: "missile", x: -100, y: 0, radius: 20},
   ];
 
   const [currentControl, setCurrentControl]=useState(null);
@@ -84,6 +84,7 @@ function World() {
   // 몬스터 처치 이펙트 상태
   const [monsterBulletHit, setMonsterBulletHit] = useState([]);
   // 몬스터 처치 이펙트 상태
+  const [monsterMissileHit, setMonsterMissileHit]=useState([]);
   const [monsterDead, setMonsterDead] = useState([]);
 
   // ---------------------------
@@ -369,6 +370,17 @@ function World() {
         };
         setMonsterBulletHit((prev) => [...prev, newEffect]);
       });
+    
+      newSocket.on("monsterMissileHit",(monsterMissileHit)=>{
+        const newEffect={
+          x: monsterMissileHit.x,
+          y: monsterMissileHit.y,
+          startTime: Date.now(),
+          duration: 300,
+          radius: monsterMissileHit.radius,
+        };
+        setMonsterMissileHit((prev)=>[...prev, newEffect]);
+      })
 
     // 몬스터 폭발 이벤트 수신
     newSocket.on("monsterDead", (monsterDeadEffect) => {
@@ -411,6 +423,9 @@ function World() {
       setMonsterBulletHit((prev) =>
         prev.filter((monsterBulletHitEffect) => now - monsterBulletHitEffect.startTime < monsterBulletHitEffect.duration)
       );
+      setMonsterMissileHit((prev)=>
+      prev.filter((monsterMissileHit)=>now-monsterMissileHit.startTime<monsterMissileHit.duration)
+    );
       setMonsterDead((prev) =>
         prev.filter((monsterDeadEffect) => now - monsterDeadEffect.startTime < monsterDeadEffect.duration)
       );
@@ -536,6 +551,21 @@ function World() {
           ctx.fill();
         }
       });
+
+      monsterMissileHit.forEach((monsterMissileHit)=>{
+        const drawX=monsterMissileHit.x-cameraOffset.x;
+        const drawY=monsterMissileHit.y-cameraOffset.y;
+        const progress=(Date.now()-monsterMissileHit.startTime)/monsterMissileHit.duration;
+        if(progress<1){
+          const alpha=(1-progress)*0.5;
+          const size= monsterMissileHit.radius+progress*20;
+
+          ctx.beginPath();
+          ctx.fillStyle=`rgba(255, 0,0, ${alpha})`;
+          ctx.arc(drawX, drawY, size, 0,2*Math.PI);
+          ctx.fill();
+        }
+      })
 
       // 몬스터 폭발 이펙트 그리기
       monsterDead.forEach((monsterDeadEffect) => {
