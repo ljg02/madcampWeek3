@@ -59,8 +59,8 @@ function startSpawningMonsters() {
       if(monsters.length > 10) return;
       spawnMonster(); // Spawn one monster
   
-      // Set a random interval for the next spawn (between 1 and 5 seconds)
-      const nextSpawnTime = Math.random() * 4000 + 3000;
+      // Set a random interval for the next spawn (between 3 and 5 seconds)
+      const nextSpawnTime = Math.random() * 2000 + 3000;
       setTimeout(spawnAtRandomInterval, nextSpawnTime);
     }
   
