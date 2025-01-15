@@ -12,6 +12,11 @@ function MainPage() {
         navigate("/world", { state: { name, color } });
     };
 
+    // 조작키 설명 페이지로 이동
+    const handleShowControls = () => {
+        navigate("/controls");
+    };
+
     return (
         <div
             style={{
@@ -58,6 +63,8 @@ function MainPage() {
                         width: "500px",
                         height: "30px",
                         position: "relative",
+                        fontSize: "1rem",
+                        padding: "5px",
                         overflow: "hidden",
                     }}
                 />
@@ -68,24 +75,44 @@ function MainPage() {
                     style={{
                         width: "50px",
                         height: "50px",
-                        position: "relative",
-                        overflow: "hidden",
+                        cursor: "pointer",
                     }}
                 />
             </div>
-            <button
-                onClick={handleStart}
+
+            <div
                 style={{
-                    width: "200px",
-                    height: "50px",
-                    position: "relative",
-                    overflow: "hidden",
-                    marginBottom: "10px",
-                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "row",
+                    gap: "20px",
                 }}
             >
-                게임 시작
-            </button>
+                {/* (1) 조작키 설명 버튼 */}
+                <button
+                    onClick={handleShowControls}
+                    style={{
+                        width: "270px",
+                        height: "50px",
+                        cursor: "pointer",
+                        fontSize: "1rem",
+                    }}
+                >
+                    조작키 설명
+                </button>
+
+                {/* (2) 게임 시작 버튼 */}
+                <button
+                    onClick={handleStart}
+                    style={{
+                        width: "270px",
+                        height: "50px",
+                        cursor: "pointer",
+                        fontSize: "1rem",
+                    }}
+                >
+                    게임 시작
+                </button>
+            </div>
         </div>
     );
 }
