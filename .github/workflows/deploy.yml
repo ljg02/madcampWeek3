@@ -21,7 +21,11 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -t asia-northeast3-docker.pkg.dev/madcampweek3-447308/game-backend-repo/game-backend:$GITHUB_SHA .
+        # Dockerfile과 애플리케이션 코드가 backend 디렉토리에 있으므로 해당 경로로 이동
+        docker build -t asia-northeast3-docker.pkg.dev/madcampweek3-447308/game-backend-repo/game-backend:$GITHUB_SHA ./backend
+
+    - name: Push Docker image to Artifact Registry
+      run: |
         docker push asia-northeast3-docker.pkg.dev/madcampweek3-447308/game-backend-repo/game-backend:$GITHUB_SHA
 
     - name: Deploy to Cloud Run
