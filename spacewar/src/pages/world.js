@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
-import monster1 from "../spacemonster1.png";
-import monster2 from "../spacemonster2.png";
-import monster3 from "../spacemonster3.png";
-import monster4 from "../spacemonster4.png";
-import monster5 from "../spacemonster5.png";
-import monster6 from "../spacemonster6.png";
-import monster7 from "../spacemonster7.png";
+import monster1 from "./spacemonster1.png";
+import monster2 from "./spacemonster2.png";
+import monster3 from "./spacemonster3.png";
+import monster4 from "./spacemonster4.png";
+import monster5 from "./spacemonster5.png";
+import monster6 from "./spacemonster6.png";
+import monster7 from "./spacemonster7.png";
 
 import { useLocation, useNavigate } from "react-router-dom";
 
