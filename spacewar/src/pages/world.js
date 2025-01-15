@@ -64,7 +64,7 @@ function World() {
 
     //컨트롤 룸
     const CONTROL_ROOMS = [
-        { type: "spaceship", x: 0, y: 0, radius: 30 },
+        { type: "spaceship", x: 0, y: 50, radius: 30 },
         { type: "gun", x: 100, y: 0, radius: 20 },
         { type: "missile", x: -100, y: 0, radius: 20 },
         { type: "shield", x: 0, y:-100, radius: 20},
@@ -903,19 +903,37 @@ function World() {
             {/* (1) 우주선 (큰 원) */}
             {/* 사실상 화면 중심에 고정 */}
             <div
+                // style={{
+                //     position: "absolute",
+                //     width: ship.radius * 2,
+                //     height: ship.radius * 2,
+                //     borderRadius: "50%",
+                //     backgroundColor: "rgba(0,255,0,0.2)",
+                //     border: "2px solid green",
+                //     left: 0,
+                //     top: 0,
+                //     transform: `translate(
+                //         ${ship.x - cameraOffset.x - ship.radius}px,
+                //         ${ship.y - cameraOffset.y - ship.radius}px
+                //     )`,
+                // }}
                 style={{
-                    position: "absolute",
-                    width: ship.radius * 2,
-                    height: ship.radius * 2,
-                    borderRadius: "50%",
-                    backgroundColor: "rgba(0,255,0,0.2)",
-                    border: "2px solid green",
-                    left: 0,
-                    top: 0,
-                    transform: `translate(
-                        ${ship.x - cameraOffset.x - ship.radius}px,
-                        ${ship.y - cameraOffset.y - ship.radius}px
-                    )`,
+                position: "absolute",
+                width: ship.radius * 2,
+                height: ship.radius * 2,
+                borderRadius: "50%",
+                background: `
+                    radial-gradient(circle at center, rgba(0, 255, 85, 0.14), rgba(0, 255, 85, 0.25) 70%)
+                `,
+                border: "4px solid rgb(0, 255, 85)", // Neon border
+                boxShadow: "0 0 20px rgb(43, 255, 0), 0 0 40px rgba(9, 255, 0, 0.4)", // Neon glow
+                left: 0,
+                top: 0,
+                transform: `translate(
+                    ${ship.x - cameraOffset.x - ship.radius}px,
+                    ${ship.y - cameraOffset.y - ship.radius}px
+                )`,
+                animation: "pulse 2s infinite alternate", // Pulse effect
                 }}
             >
                 {/* (2) 우주선 내부 플레이어(빨간 원) */}
