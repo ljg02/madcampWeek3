@@ -1,0 +1,35 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: madcampweek3-447308
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Build Docker image
+      run: |
+        docker build -t asia-northeast3-docker.pkg.dev/madcampweek3-447308/game-backend-repo/game-backend:$GITHUB_SHA .
+        docker push asia-northeast3-docker.pkg.dev/madcampweek3-447308/game-backend-repo/game-backend:$GITHUB_SHA
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy game-backend \
+          --image asia-northeast3-docker.pkg.dev/madcampweek3-447308/game-backend-repo/game-backend:$GITHUB_SHA \
+          --platform managed \
+          --region asia-northeast3 \
+          --allow-unauthenticated \
+          --memory 512Mi \
+          --port 5000
