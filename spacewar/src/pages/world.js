@@ -42,6 +42,7 @@ function World() {
     const keysRef = useRef(keys);
     const [weaponAngle, setWeaponAngle] = useState(0); // 마우스 각도(도 단위)
     const [missileAngle, setMissileAngle] = useState(180);
+    const [shieldAngle, setShieldAngle]=useState(0);
 
     // ---------------------------
     // 4) 총알 목록(각 총알의 글로벌 좌표)
@@ -66,6 +67,7 @@ function World() {
         { type: "spaceship", x: 0, y: 0, radius: 30 },
         { type: "gun", x: 100, y: 0, radius: 20 },
         { type: "missile", x: -100, y: 0, radius: 20 },
+        { type: "shield", x: 0, y:-100, radius: 20},
     ];
 
     // 클라이언트가 잡고 있는 조종석
@@ -78,6 +80,7 @@ function World() {
         spaceship: { on: false, visible: false },
         gun: { on: false, visible: false },
         missile: { on: false, visible: false },
+        shield: {on: false, visible: false},
     });
 
     //자리 색깔
@@ -279,7 +282,7 @@ function World() {
     // ---------------------------------------------------------
     useEffect(() => {
         const handleMouseMove = (e) => {
-            if(currentControlRef.current !== "gun" && currentControlRef.current !== "missile") return;
+            if(currentControlRef.current !== "gun" && currentControlRef.current !== "missile" && currentControlRef.current!=="shield") return;
 
             // (1) 화면(우주선) 중심 = (centerX, centerY)
             //     (우주선이 화면 정중앙에 고정이므로)
@@ -422,6 +425,7 @@ function World() {
             setPlayers(data.players);
             setWeaponAngle(data.weaponAngle);
             setMissileAngle(data.missileAngle);
+            setShieldAngle(data.shieldAngle);
             setBullets(data.bullets);
             setMissiles(data.missiles);
             setMonsters(data.monsters);
@@ -579,7 +583,7 @@ function World() {
                 const drawY = globalY - cameraOffset.y;
 
                 // on/off 글씨 그리기
-                if (switchStates[room.type].visible) {
+                if (switchStates[room.type]?.visible) {
                     const isOn = switchStates[room.type].on;
 
                     const switchX = drawX;
@@ -711,6 +715,18 @@ function World() {
                     ctx.fill();
                 }
             });
+
+            // ctx.beginPath();
+            // ctx.arc(
+            //     drawShipX,
+            //     drawShipY,
+            //     ship.radius + 10,
+            //     shieldAngle,
+            //     shieldAngle,
+            // );
+            // ctx.strokeStyle = "rgba(0, 255, 255, 0.5)";
+            // ctx.lineWidth = 8;
+            // ctx.stroke();
 
             // 7) Score 표시 (왼쪽 위)
             ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; // 반투명 배경
@@ -893,6 +909,7 @@ function World() {
                 {/* (3) 우주선 표면 포탑 */}
                 <MissileTurret angle={missileAngle} shipRadius={SHIP_RADIUS} turretWidth={M_TURRET_WIDTH} turretHeight={M_TURRET_HEIGHT} />
                 <Turret angle={weaponAngle} shipRadius={ship.radius} turretWidth={TURRET_WIDTH} turretHeight={TURRET_HEIGHT} />
+                <ShieldTurret angle={shieldAngle} shipRadius={SHIP_RADIUS} turretLength={10} turretThickness={100}/>
             </div>
 
             {/* 기존 총알 그리던 부분 */}
@@ -969,5 +986,40 @@ function MissileTurret({ angle, shipRadius, turretWidth, turretHeight }) {
         />
     );
 }
+
+function ShieldTurret({ angle, shipRadius, turretLength, turretThickness }) {
+    // Convert angle to radians
+    const angleRads = (angle * Math.PI) / 180;
+
+    // Turret distance from the center of the spaceship
+    const turretDist = shipRadius + turretThickness / 4;
+
+    // Calculate the turret's position
+    const turretX = turretDist * Math.cos(angleRads);
+    const turretY = turretDist * Math.sin(angleRads);
+
+    return (
+        <div
+            style={{
+                position: "absolute",
+                width: `${turretLength}px`,
+                height: `${turretThickness}px`,
+                backgroundColor: "cyan",
+                borderRadius: `${turretThickness / 2}px`,
+                left: 0,
+                top: 0,
+                transform: `
+                    translate(
+                        ${shipRadius - turretLength / 2 + turretX}px,
+                        ${shipRadius - turretThickness / 2 + turretY}px
+                    )
+                    rotate(${angle}deg)
+                `,
+                transformOrigin: "center center",
+            }}
+        />
+    );
+}
+
 
 export default World;
