@@ -14,7 +14,8 @@ const io = new Server(server, {
 // --- 게임 월드 상태 예시 ---
 let players = {}; // 플레이어 목록 { socket.id: { x: 0, y: 0 } }
 let missileAngle = 0;
-let ship = { x: 0, y: 0, hp: 10, radius: 150};   //우주선 상태(위치, hp)
+let shieldAngle=0;
+let ship = { x: 0, y: 0, hp: 10, radius: 150, shieldArc: Math.PI/5,};   //우주선 상태(위치, hp)
 let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
 let missiles=[];
@@ -28,6 +29,7 @@ let seatStates={
   spaceship: {occupant: null, color: "#ffffff"},
   gun: {occupant: null, color: "#ffffff"},
   missile: {occupant: null, color: "#ffffff"},
+  shield: {occupant: null, color: "#ffffff"}
 };
 
 //몬스터 크기
@@ -97,6 +99,7 @@ function resetGameState() {
       spaceship: {occupant: null, color: "#ffffff"},
       gun: {occupant: null, color: "#ffffff"},
       missile: {occupant: null, color: "#ffffff"},
+      shield: {occupant: null, color: "#ffffff"}
     };
     score = 0;
     
@@ -220,6 +223,7 @@ function gameLoopStep() {
   let bulletHitMonster = []; // 총알에 피격된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
   let ExplodedMissile=[];
   let isGameOver = false;
+  
 
   // 모든 몬스터에 대해 각각 순회하며, 모든 총알과의 위치관계를 확인
   monsters.forEach((monster) => {
@@ -275,8 +279,33 @@ function gameLoopStep() {
       const dx = ship.x - monster.x;
       const dy = ship.y - monster.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
+
+      let monsterAngle=(Math.atan2(monster.y-ship.y, monster.x-ship.x)*180)/Math.PI;
+      let anglediff=(monsterAngle-shieldAngle+360)%360;
+
+
+      if(
+        dist<=(ship.radius+monster.radius)+25 &&
+        (anglediff<=36 || anglediff>=324)
+      ){
+        monster.state="bounce";
+        let dirX=monster.x-ship.x;
+        let dirY=monster.y-ship.y;
+        const currentDist=Math.sqrt(dirX*dirX+dirY*dirY);
+
+        if(currentDist !==0){
+          dirX/=currentDist;
+          dirY/=currentDist;
+        }
+
+        const BOUNCE_SPEED=7;
+        monster.vx=dirX*BOUNCE_SPEED;
+        monster.vy=dirY*BOUNCE_SPEED;
+
+          monster.bounceTimer=300;
+      }
     
-      if (dist <= (ship.radius + monster.radius)) {
+      else if (dist <= (ship.radius + monster.radius)) {
           ship.hp-=1;
           //우주선 충돌 이벤트 방송
           io.emit("shipHit");
@@ -388,6 +417,7 @@ function gameLoopStep() {
     ship, 
     weaponAngle,
     missileAngle, 
+    shieldAngle,
     bullets,
     missiles, 
     monsters,
@@ -456,6 +486,8 @@ io.on("connection", (socket) => {
       weaponAngle=data.angle;
     }else if(data.type==="missile"){
       missileAngle=data.angle;
+    }else if(data.type==="shield"){
+      shieldAngle=data.angle;
     }
   });
 
