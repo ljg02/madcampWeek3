@@ -45,7 +45,7 @@ function ControlsPage() {
           <KeyIcon label="W" /> <KeyIcon label="A" /> <KeyIcon label="S" /> <KeyIcon label="D" />
         </p>
 
-        <h2>포탑 조준</h2>
+        <h2>포탑 / 보호막 조준</h2>
         <p style={{ fontSize: "1.2rem" }}>
           <KeyIcon icon="fas fa-mouse-pointer" /> 마우스를 이동하여 포탑의 각도를 조절
         </p>
