@@ -42,7 +42,7 @@ function World() {
     const keysRef = useRef(keys);
     const [weaponAngle, setWeaponAngle] = useState(0); // 마우스 각도(도 단위)
     const [missileAngle, setMissileAngle] = useState(180);
-    const [shieldAngle, setShieldAngle]=useState(0);
+    const [shieldAngle, setShieldAngle]=useState(90);
 
     // ---------------------------
     // 4) 총알 목록(각 총알의 글로벌 좌표)

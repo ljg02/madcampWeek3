@@ -13,8 +13,8 @@ const io = new Server(server, {
 
 // --- 게임 월드 상태 예시 ---
 let players = {}; // 플레이어 목록 { socket.id: { x: 0, y: 0 } }
-let missileAngle = 0;
-let shieldAngle=0;
+let missileAngle = 180;
+let shieldAngle=90;
 let ship = { x: 0, y: 0, hp: 10, radius: 150, shieldArc: Math.PI/5,};   //우주선 상태(위치, hp)
 let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
