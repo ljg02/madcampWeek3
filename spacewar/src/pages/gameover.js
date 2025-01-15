@@ -59,7 +59,7 @@ function Gameover() {
                     cursor: "pointer",
                 }}
             >
-                게임 시작
+                다시 시작
             </button>
         </div>
     );

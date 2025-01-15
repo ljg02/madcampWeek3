@@ -14,33 +14,33 @@ const io = new Server(server, {
 // --- 게임 월드 상태 예시 ---
 let players = {}; // 플레이어 목록 { socket.id: { x: 0, y: 0 } }
 let missileAngle = 180;
-let shieldAngle=90;
-let ship = { x: 0, y: 0, hp: 10, radius: 150, shieldArc: Math.PI/5,};   //우주선 상태(위치, hp)
+let shieldAngle = 90;
+let ship = { x: 0, y: 0, hp: 10, radius: 150, shieldArc: Math.PI / 5, };   //우주선 상태(위치, hp)
 let weaponAngle = 0;    //turret 각도
 let bullets = []; // 총알 목록 { x, y, angleRad, speed, ... }
-let missiles=[];
+let missiles = [];
 let monsters = [];
-let controlAssignments={};  // 각 플레이어가 잡은 조종석 목록 { socket.id: "spaceship" }
+let controlAssignments = {};  // 각 플레이어가 잡은 조종석 목록 { socket.id: "spaceship" }
 
 let score = 0;  //점수(모든 플레이어가 공유)
 
 // 각 조종석 상태(잡은 사람과 색깔)
-let seatStates={
-  spaceship: {occupant: null, color: "#ffffff"},
-  gun: {occupant: null, color: "#ffffff"},
-  missile: {occupant: null, color: "#ffffff"},
-  shield: {occupant: null, color: "#ffffff"}
+let seatStates = {
+  spaceship: { occupant: null, color: "#ffffff" },
+  gun: { occupant: null, color: "#ffffff" },
+  missile: { occupant: null, color: "#ffffff" },
+  shield: { occupant: null, color: "#ffffff" }
 };
 
 //몬스터 크기
 const MONSTER_RADIUS = 20;
-const MISSILE_DAMAGE=5;
+const MISSILE_DAMAGE = 5;
 
 // 우주선에 상대적으로 스폰위치를 랜덤하게 결정, shipPos를 더해 글로벌 좌표계로
 function spawnMonsterOnEdge(angle) {
   const radius = 1080 / 2;
   const angleRad = (angle * Math.PI) / 180;
- 
+
   return {
     x: radius * Math.cos(angleRad) + ship.x,
     y: radius * Math.sin(angleRad) + ship.y
@@ -48,66 +48,66 @@ function spawnMonsterOnEdge(angle) {
 }
 
 function startSpawningMonsters() {
-  const monsterImageCount=7;
-    function spawnMonster() {
-      const angle = Math.random() * 360;
-      const monster = {
-        ...spawnMonsterOnEdge(angle),
-        speed: Math.random() * 0.5 + 0.7, // Random speed between 1 and 4
-        t: 0.001, // LERP interpolation factor
-        zigzagAmplitude: Math.random() * 5 + 20,
-        zigzagFrequency: Math.random() * 0.5 + 0.01,
-        zigzagDirection: Math.random() < 0.5 ? -1 : 1,
-        frameInterval: Math.floor(Math.random() * 50) + 20,
-        frameCount: 0,
-        radius: MONSTER_RADIUS,
-        hp: 3,
-        vx:0,
-        vy: 0,
-        state: "approach",
-        bounceTimer:0,
-        imageIndex: Math.floor(Math.random()*monsterImageCount),
-      };
-  
-      // Add the new monster to the array
-      monsters.push(monster);
-    }
-  
-    function spawnAtRandomInterval() {
-      if(!mainLoop || monsters.length > 10) return;
-      spawnMonster(); // Spawn one monster
-  
-      // Set a random interval for the next spawn (between 3 and 5 seconds)
-      const nextSpawnTime = Math.random() * 2000 + 3000;
-      setTimeout(spawnAtRandomInterval, nextSpawnTime);
-    }
-  
-    // Start the spawning loop after 3s
-    if(mainLoop) {
-      setTimeout(spawnAtRandomInterval, 3000);
-    }
+  const monsterImageCount = 7;
+  function spawnMonster() {
+    const angle = Math.random() * 360;
+    const monster = {
+      ...spawnMonsterOnEdge(angle),
+      speed: Math.random() * 0.5 + 0.7, // Random speed between 1 and 4
+      t: 0.001, // LERP interpolation factor
+      zigzagAmplitude: Math.random() * 5 + 20,
+      zigzagFrequency: Math.random() * 0.5 + 0.01,
+      zigzagDirection: Math.random() < 0.5 ? -1 : 1,
+      frameInterval: Math.floor(Math.random() * 50) + 20,
+      frameCount: 0,
+      radius: MONSTER_RADIUS,
+      hp: 3,
+      vx: 0,
+      vy: 0,
+      state: "approach",
+      bounceTimer: 0,
+      imageIndex: Math.floor(Math.random() * monsterImageCount),
+    };
+
+    // Add the new monster to the array
+    monsters.push(monster);
+  }
+
+  function spawnAtRandomInterval() {
+    if (!mainLoop || monsters.length > 10) return;
+    spawnMonster(); // Spawn one monster
+
+    // Set a random interval for the next spawn (between 3 and 5 seconds)
+    const nextSpawnTime = Math.random() * 2000 + 3000;
+    setTimeout(spawnAtRandomInterval, nextSpawnTime);
+  }
+
+  // Start the spawning loop after 3s
+  if (mainLoop) {
+    setTimeout(spawnAtRandomInterval, 3000);
+  }
 }
 
 function resetGameState() {
-    players = {};
-    ship = { x: 0, y: 0, hp: 10, radius: 150 };
-    weaponAngle = 0;
-    missileAngle = 0;
-    bullets = [];
-    missiles = [];
-    monsters = [];
-    controlAssignments = {};
-    seatStates = {
-      spaceship: {occupant: null, color: "#ffffff"},
-      gun: {occupant: null, color: "#ffffff"},
-      missile: {occupant: null, color: "#ffffff"},
-      shield: {occupant: null, color: "#ffffff"}
-    };
-    score = 0;
-    
-    // 만약 다시 몬스터 스폰도 처음부터 시작하고 싶다면,
-    // startSpawningMonsters()를 다시 호출하거나,
-    // spawn 타이머 등을 초기화하는 로직을 넣어도 됨
+  players = {};
+  ship = { x: 0, y: 0, hp: 10, radius: 150 };
+  weaponAngle = 0;
+  missileAngle = 0;
+  bullets = [];
+  missiles = [];
+  monsters = [];
+  controlAssignments = {};
+  seatStates = {
+    spaceship: { occupant: null, color: "#ffffff" },
+    gun: { occupant: null, color: "#ffffff" },
+    missile: { occupant: null, color: "#ffffff" },
+    shield: { occupant: null, color: "#ffffff" }
+  };
+  score = 0;
+
+  // 만약 다시 몬스터 스폰도 처음부터 시작하고 싶다면,
+  // startSpawningMonsters()를 다시 호출하거나,
+  // spawn 타이머 등을 초기화하는 로직을 넣어도 됨
 }
 
 let mainLoop = null; // 메인 루프 식별자(Interval ID 등)
@@ -119,7 +119,7 @@ function startMainLoop() {
   mainLoop = setInterval(() => {
     // 여기서 bullets, monsters, collisions 등 게임 로직을 돌림
     gameLoopStep();
-  }, 10);
+  }, 15);
 }
 
 function stopMainLoop() {
@@ -144,30 +144,30 @@ function gameLoopStep() {
   bullets = bullets.filter((b) => b.mileage < 1000);
 
   // 1-1. 미사일 이동
-  missiles=missiles.map((m)=>{
-      return {
-        ...m,
-        x: m.x + m.speed*Math.cos(m.angleRadm),
-        y: m.y + m.speed*Math.sin(m.angleRadm),
-        mileage: m.mileage+m.speed,
-      };
+  missiles = missiles.map((m) => {
+    return {
+      ...m,
+      x: m.x + m.speed * Math.cos(m.angleRadm),
+      y: m.y + m.speed * Math.sin(m.angleRadm),
+      mileage: m.mileage + m.speed,
+    };
   });
 
-  missiles=missiles.filter((m)=> m.mileage<1000);
+  missiles = missiles.filter((m) => m.mileage < 1000);
 
   // 3. 몬스터 움직임에 따른 위치 계산
   monsters = monsters.map((monster) => {
 
-    if(monster.state==="approach"){
-      let dx=monster.x-ship.x;
-      let dy=monster.y-ship.y;
-      let dist=Math.sqrt(dx*dx+dy*dy);
-      if(dist!==0){
-        dx/=dist;
-        dy/=dist;
+    if (monster.state === "approach") {
+      let dx = monster.x - ship.x;
+      let dy = monster.y - ship.y;
+      let dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist !== 0) {
+        dx /= dist;
+        dy /= dist;
       }
-      monster.x-=dx*monster.speed;
-      monster.y-=dy*monster.speed;
+      monster.x -= dx * monster.speed;
+      monster.y -= dy * monster.speed;
 
       const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
 
@@ -176,42 +176,42 @@ function gameLoopStep() {
         dx /= distanceToCenter;
         dy /= distanceToCenter;
       }
-  
+
       monster.frameCount++;
       if (monster.frameCount % 30 === 0) {
         monster.zigzagDirection *= -1;
       }
-  
+
       //몬스터가 우주선에 점점 다가가도록
       monster.x += (-dx) * monster.speed;
       monster.y += (-dy) * monster.speed;
-  
+
       //수직 벡터
       const perpDx = dy;
       const perpDy = -dx;
-  
+
       //우주선-몬스터를 잇는 직선에 수직으로 진동하도록
       const zigzagX = perpDx * monster.zigzagAmplitude * monster.zigzagDirection;
       const zigzagY = perpDy * monster.zigzagAmplitude * monster.zigzagDirection;
-  
+
       monster.x += zigzagX * 0.1;
       monster.y += zigzagY * 0.1;
 
     }
-    else if(monster.state==="bounce"){
+    else if (monster.state === "bounce") {
 
-      monster.x+=monster.vx;
-      monster.y+=monster.vy;
+      monster.x += monster.vx;
+      monster.y += monster.vy;
 
       //프레임당 10ms만큼 감소
       monster.bounceTimer -= 10;
-      if(monster.bounceTimer<=0){
-        monster.state="approach";
-        monster.vx=0;
-        monster.vy=0;
+      if (monster.bounceTimer <= 0) {
+        monster.state = "approach";
+        monster.vx = 0;
+        monster.vy = 0;
       }
     }
-  
+
     return monster;
   });
 
@@ -223,9 +223,9 @@ function gameLoopStep() {
   let collidedBulletIndexes = new Set();
   let deadMonster = []; // 처치된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
   let bulletHitMonster = []; // 총알에 피격된 몬스터 정보 저장 ({ x: monster.x, y: monster.y, radius: monster.radius })
-  let ExplodedMissile=[];
+  let ExplodedMissile = [];
   let isGameOver = false;
-  
+
 
   // 모든 몬스터에 대해 각각 순회하며, 모든 총알과의 위치관계를 확인
   monsters.forEach((monster) => {
@@ -244,11 +244,11 @@ function gameLoopStep() {
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (dist <= (b.radius + monster.radius)) {
-        monster.hp-=1;
+        monster.hp -= 1;
         bulletHitMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
 
         // 충돌 발생
-        if(monster.hp<=0){
+        if (monster.hp <= 0) {
           isMonsterDead = true;
           // 처치 몬스터 정보 저장
           deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
@@ -262,81 +262,81 @@ function gameLoopStep() {
     }
 
     //미사일 배열을 순회하며 미사일과의 충돌 확인
-    for (let j = 0; j < missiles.length; j++){
+    for (let j = 0; j < missiles.length; j++) {
       const m = missiles[j];
       const mx = m.x - monster.x;
       const my = m.y - monster.y;
       //몬스터와 미사일 간의 거리
-      const mist = Math.sqrt(mx*mx+my*my);
+      const mist = Math.sqrt(mx * mx + my * my);
 
       //몬스터와 닿은 미사일은 폭발상태로 변경
-      if(mist <= (m.radius+monster.radius)){
-        m.exploded=true;
-        ExplodedMissile.push({ x: m.x, y: m.y, radius: m.explodeRadius});
+      if (mist <= (m.radius + monster.radius)) {
+        m.exploded = true;
+        ExplodedMissile.push({ x: m.x, y: m.y, radius: m.explodeRadius });
       }
     }
 
     // 우주선과의 충돌 확인
-    if(!isMonsterDead && monster.state !== "bounce") {
+    if (!isMonsterDead && monster.state !== "bounce") {
       const dx = ship.x - monster.x;
       const dy = ship.y - monster.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      let monsterAngle=(Math.atan2(monster.y-ship.y, monster.x-ship.x)*180)/Math.PI;
-      let anglediff=(monsterAngle-shieldAngle+360)%360;
+      let monsterAngle = (Math.atan2(monster.y - ship.y, monster.x - ship.x) * 180) / Math.PI;
+      let anglediff = (monsterAngle - shieldAngle + 360) % 360;
 
 
-      if(
-        dist<=(ship.radius+monster.radius)+25 &&
-        (anglediff<=36 || anglediff>=324)
-      ){
-        monster.state="bounce";
-        let dirX=monster.x-ship.x;
-        let dirY=monster.y-ship.y;
-        const currentDist=Math.sqrt(dirX*dirX+dirY*dirY);
+      if (
+        dist <= (ship.radius + monster.radius) + 25 &&
+        (anglediff <= 36 || anglediff >= 324)
+      ) {
+        monster.state = "bounce";
+        let dirX = monster.x - ship.x;
+        let dirY = monster.y - ship.y;
+        const currentDist = Math.sqrt(dirX * dirX + dirY * dirY);
 
-        if(currentDist !==0){
-          dirX/=currentDist;
-          dirY/=currentDist;
+        if (currentDist !== 0) {
+          dirX /= currentDist;
+          dirY /= currentDist;
         }
 
-        const BOUNCE_SPEED=7;
-        monster.vx=dirX*BOUNCE_SPEED;
-        monster.vy=dirY*BOUNCE_SPEED;
+        const BOUNCE_SPEED = 7;
+        monster.vx = dirX * BOUNCE_SPEED;
+        monster.vy = dirY * BOUNCE_SPEED;
 
-          monster.bounceTimer=300;
+        monster.bounceTimer = 300;
       }
-    
+
       else if (dist <= (ship.radius + monster.radius)) {
-          ship.hp-=1;
-          //우주선 충돌 이벤트 방송
-          io.emit("shipHit");
+        ship.hp -= 1;
+        //우주선 충돌 이벤트 방송
+        io.emit("shipHit");
 
-          // 우주선 hp가 0이면 게임오버
-          if(ship.hp<=0){
+        // 우주선 hp가 0이면 게임오버
+        if (ship.hp <= 0) {
           isGameOver = true;
-          }
+        }
 
-          // 넉백 설정
-          monster.state="bounce";
+        // 넉백 설정
+        monster.state = "bounce";
 
-          let dirX=monster.x-ship.x;
-          let dirY=monster.y-ship.y;
-          const currentDist=Math.sqrt(dirX*dirX+dirY*dirY);
+        let dirX = monster.x - ship.x;
+        let dirY = monster.y - ship.y;
+        const currentDist = Math.sqrt(dirX * dirX + dirY * dirY);
 
-          if(currentDist !==0){
-            dirX/=currentDist;
-            dirY/=currentDist;
-          }
+        if (currentDist !== 0) {
+          dirX /= currentDist;
+          dirY /= currentDist;
+        }
 
-          const BOUNCE_SPEED=7;
-          monster.vx=dirX*BOUNCE_SPEED;
-          monster.vy=dirY*BOUNCE_SPEED;
+        const BOUNCE_SPEED = 7;
+        monster.vx = dirX * BOUNCE_SPEED;
+        monster.vy = dirY * BOUNCE_SPEED;
 
-          monster.bounceTimer=300;
+        monster.bounceTimer = 300;
 
-          // 해당 몬스터 사망 처리
-          // isMonsterDead = true;
+        // 해당 몬스터 사망 처리
+        // isMonsterDead = true;
       }
     }
 
@@ -351,18 +351,18 @@ function gameLoopStep() {
   // 폭발 반경에 들어간 몬스터 처리
   monsters.forEach((monster) => {
     let isMonsterDead = false;
-    for(let i = 0; i < missiles.length; i++) {
+    for (let i = 0; i < missiles.length; i++) {
       const m = missiles[i];
       const mx = m.x - monster.x;
       const my = m.y - monster.y;
       //몬스터와 미사일 간의 거리
-      const mist = Math.sqrt(mx*mx+my*my);
+      const mist = Math.sqrt(mx * mx + my * my);
 
       //반경 내에 있는지 확인
-      if(m.exploded && mist<=(m.explodeRadius+monster.radius)){
-        monster.hp-=5;
-        if(monster.hp<=0){
-          isMonsterDead=true;
+      if (m.exploded && mist <= (m.explodeRadius + monster.radius)) {
+        monster.hp -= 5;
+        if (monster.hp <= 0) {
+          isMonsterDead = true;
           // 처치 몬스터 정보 저장
           deadMonster.push({ x: monster.x, y: monster.y, radius: monster.radius });
         }
@@ -381,13 +381,13 @@ function gameLoopStep() {
   });
 
   // 폭발하지 않은 미사일만 남김
-  let newMissiles=missiles.filter((m, index)=>{
+  let newMissiles = missiles.filter((m, index) => {
     return !m.exploded;
   })
 
   monsters = newMonsters;
   bullets = newBullets;
-  missiles=newMissiles;
+  missiles = newMissiles;
 
   // 5. 총알 피격 정보 브로드캐스트
   bulletHitMonster.forEach((monster) => {
@@ -395,7 +395,7 @@ function gameLoopStep() {
   });
 
   // 6. 미사일 폭발 정보 브로드캐스트
-  ExplodedMissile.forEach((missileEffect)=>{
+  ExplodedMissile.forEach((missileEffect) => {
     io.emit("missileExplode", missileEffect);
   });
 
@@ -406,7 +406,7 @@ function gameLoopStep() {
   });
 
   // 8. 게임 오버 브로드캐스트
-  if(isGameOver) {
+  if (isGameOver) {
     io.emit("gameover", score);
     resetGameState();
     stopMainLoop();
@@ -414,18 +414,18 @@ function gameLoopStep() {
 
   // 9. 모든 클라이언트에게 최신 상태를 브로드캐스트
   //io.emit("updateGameState", { players, shipPos, weaponAngle, bullets, monsters });
-  io.emit("updateGameState", { 
-    players, 
-    ship, 
+  io.emit("updateGameState", {
+    players,
+    ship,
     weaponAngle,
-    missileAngle, 
+    missileAngle,
     shieldAngle,
     bullets,
-    missiles, 
+    missiles,
     monsters,
     score,
     seatStates,
-   });
+  });
 }
 
 // 클라이언트가 소켓 연결을 맺으면
@@ -462,40 +462,42 @@ io.on("connection", (socket) => {
   socket.on("playerMove", (playerPos) => {
     // data = { playerPos, } (프론트엔드에서 보내준다고 가정)
     if (players[socket.id]) {
-      // 잡은 조종석이 없으면 플레이어 이동
-      if(!controlAssignments[socket.id]){
-        players[socket.id].x = playerPos.x;
-        players[socket.id].y = playerPos.y;
-      }
+      players[socket.id].x += playerPos.x;
+      players[socket.id].y += playerPos.y;
 
+      // 우주선 경계 내부 플레이어 제한
+      // (우주선 반지름 150 - 플레이어 반지름 25 = 125까지 가능)
+      const dist = Math.sqrt(players[socket.id].x * players[socket.id].x + players[socket.id].y * players[socket.id].y);
+      const maxDist = ship.radius - 15;   //PLAYER_RADIUS = 15
+      if (dist > maxDist) {
+        const scale = maxDist / dist;
+        players[socket.id].x *= scale;
+        players[socket.id].y *= scale;
+      }
     }
     // 이후 매 프레임마다 setInterval로 updateGameState를 보내므로,
     // 여기서는 따로 emit하지 않아도 됨(선택사항)
   });
 
   socket.on("spaceShipMove", (shipPos) => {
-    if(controlAssignments[socket.id]!=="spaceship"){
-      return;
-    }
-    
-    ship.x = shipPos.x;
-    ship.y = shipPos.y;
+    ship.x += shipPos.x;
+    ship.y += shipPos.y;
   });
 
   socket.on("turretMove", (data) => {
     // weaponAngle = newWeaponAngle
-    if(data.type==="gun"){
-      weaponAngle=data.angle;
-    }else if(data.type==="missile"){
-      missileAngle=data.angle;
-    }else if(data.type==="shield"){
-      shieldAngle=data.angle;
+    if (data.type === "gun") {
+      weaponAngle = data.angle;
+    } else if (data.type === "missile") {
+      missileAngle = data.angle;
+    } else if (data.type === "shield") {
+      shieldAngle = data.angle;
     }
   });
 
   // 3) 총알 발사
   socket.on("shootBullet", (bulletData) => {
-    if(controlAssignments[socket.id]!=="gun"){return;}
+    if (controlAssignments[socket.id] !== "gun") { return; }
     // bulletData = { x, y, angleRad, speed, radius, ... }
     // 발사 위치/각도 계산은 클라이언트에서 한 뒤 서버로 전송
     bullets.push({
@@ -506,8 +508,8 @@ io.on("connection", (socket) => {
   });
 
   //4) 미사일 발사
-  socket.on("launchMissile",(missileData)=>{
-    if(controlAssignments[socket.id]!=="missile"){return;}
+  socket.on("launchMissile", (missileData) => {
+    if (controlAssignments[socket.id] !== "missile") { return; }
     missiles.push({
       ...missileData,
       ownerId: socket.id,
@@ -515,28 +517,28 @@ io.on("connection", (socket) => {
   })
 
   //5) 컨트롤 잡기
-  socket.on("acquireControl",(data)=>{
+  socket.on("acquireControl", (data) => {
     // 플레이어가 잡은 조종석 목록에 해당 조종권한 할당
-    controlAssignments[socket.id]=data.controlType;
+    controlAssignments[socket.id] = data.controlType;
 
-    seatStates[data.controlType].occupant=socket.id;
+    seatStates[data.controlType].occupant = socket.id;
     //조종석 색깔을 잡은 플레이어 색깔로 변경
-    if(players[socket.id]){
-      seatStates[data.controlType].color=players[socket.id].color;
-    }else{
-      seatStates[data.controlType].color="#ffffff";
+    if (players[socket.id]) {
+      seatStates[data.controlType].color = players[socket.id].color;
+    } else {
+      seatStates[data.controlType].color = "#ffffff";
     }
     //console.log(`socket ${socket.id} is controlling: ${data.controlType}`);
   });
 
   //6) 컨트롤 놓기(해당 플레이어가 잡은 조종석 해제)
-  socket.on("releaseControl",()=>{
+  socket.on("releaseControl", () => {
     //console.log(`socket ${socket.id} released control`);
-    controlAssignments[socket.id]=null;
-    for(let seat in seatStates){
-      if(seatStates[seat].occupant===socket.id){
-        seatStates[seat].occupant=null;
-        seatStates[seat].color="#ffffff";
+    controlAssignments[socket.id] = null;
+    for (let seat in seatStates) {
+      if (seatStates[seat].occupant === socket.id) {
+        seatStates[seat].occupant = null;
+        seatStates[seat].color = "#ffffff";
       }
     }
   })

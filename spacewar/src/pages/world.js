@@ -213,13 +213,22 @@ function World() {
             if(currentControlRef.current !== "spaceship") return;
 
             const keys = keysRef.current;
-            let { x, y } = shipRef.current || { x: 0, y: 0 };
+            // let { x, y } = shipRef.current || { x: 0, y: 0 };
+            // const step = 10;
+            // // WASD
+            // if (keys["w"] || keys["W"]) y -= step;
+            // if (keys["s"] || keys["S"]) y += step;
+            // if (keys["a"] || keys["A"]) x -= step;
+            // if (keys["d"] || keys["D"]) x += step;
+
+            let x = 0;
+            let y = 0;
             const step = 10;
-            // WASD
             if (keys["w"] || keys["W"]) y -= step;
             if (keys["s"] || keys["S"]) y += step;
             if (keys["a"] || keys["A"]) x -= step;
             if (keys["d"] || keys["D"]) x += step;
+            
 
             if(socket) {
                 socket.emit("spaceShipMove", { x, y });
@@ -242,9 +251,17 @@ function World() {
             if(currentControlRef.current) return;
 
             const keys = keysRef.current;
-            let { x, y } = playerPosRef.current || { x: 0, y: 0 };
+            // let { x, y } = playerPosRef.current || { x: 0, y: 0 };
+            // const step = 5;
+            // // WASD
+            // if (keys["w"] || keys["W"]) y -= step;
+            // if (keys["s"] || keys["S"]) y += step;
+            // if (keys["a"] || keys["A"]) x -= step;
+            // if (keys["d"] || keys["D"]) x += step;
+
+            let x = 0;
+            let y = 0;
             const step = 5;
-            // WASD
             if (keys["w"] || keys["W"]) y -= step;
             if (keys["s"] || keys["S"]) y += step;
             if (keys["a"] || keys["A"]) x -= step;
@@ -252,13 +269,13 @@ function World() {
 
             // 우주선 경계 내부 플레이어 제한
             // (우주선 반지름 150 - 플레이어 반지름 25 = 125까지 가능)
-            const dist = Math.sqrt(x * x + y * y);
-            const maxDist = ship.radius - PLAYER_RADIUS;
-            if (dist > maxDist) {
-                const scale = maxDist / dist;
-                x *= scale;
-                y *= scale;
-            }
+            // const dist = Math.sqrt(x * x + y * y);
+            // const maxDist = ship.radius - PLAYER_RADIUS;
+            // if (dist > maxDist) {
+            //     const scale = maxDist / dist;
+            //     x *= scale;
+            //     y *= scale;
+            // }
 
             //setPlayerPos({ x, y });
             if (socket) {
