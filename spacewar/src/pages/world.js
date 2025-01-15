@@ -64,10 +64,10 @@ function World() {
 
     //컨트롤 룸
     const CONTROL_ROOMS = [
-        { type: "spaceship", x: 0, y: 50, radius: 30 },
-        { type: "gun", x: 100, y: 0, radius: 20 },
-        { type: "missile", x: -100, y: 0, radius: 20 },
-        { type: "shield", x: 0, y:-100, radius: 20},
+        { type: "spaceship", x: 0, y: 50, radius: 40 },
+        { type: "gun", x: 100, y: 0, radius: 30 },
+        { type: "missile", x: -100, y: 0, radius: 30 },
+        { type: "shield", x: 0, y:-100, radius: 30},
     ];
 
     // 클라이언트가 잡고 있는 조종석
@@ -984,7 +984,7 @@ function Turret({ angle, shipRadius, turretWidth, turretHeight }) {
                 position: "absolute",
                 width: `${turretWidth}px`,
                 height: `${turretHeight}px`,
-                backgroundColor: "blue",
+                backgroundColor: "rgb(100, 100, 100)",
                 // 우주선 중심에 맞추기(우주선 하위 컴포넌트이므로 우주선에 상대적인 위치로 설정)
                 left: 0,
                 top: 0,
@@ -1018,7 +1018,7 @@ function MissileTurret({ angle, shipRadius, turretWidth, turretHeight }) {
                 position: "absolute",
                 width: `${turretWidth}px`,
                 height: `${turretHeight}px`,
-                backgroundColor: "green",
+                backgroundColor: "rgb(150, 150, 150)",
                 // 우주선 중심에 맞추기(우주선 하위 컴포넌트이므로 우주선에 상대적인 위치로 설정)
                 left: 0,
                 top: 0,
