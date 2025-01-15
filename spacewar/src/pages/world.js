@@ -60,7 +60,7 @@ function World() {
     // 몬스터 목록
     // const [monsters, setMonsters] = useState([]);
     // 몬스터 이미지 목록
-    const monsterImages = [monster1, monster2, monster3, monster4, monster5, monster6, monster7];
+    const [monsterImagesLoaded,setMonsterImagesLoaded]=useState([]);
 
     //컨트롤 룸
     const CONTROL_ROOMS = [
@@ -90,13 +90,6 @@ function World() {
         missile: { occupant: null, color: "#ffffff" },
     });
 
-    const loadMonsterImages = () => {
-        return monsterImages.map((src) => {
-            const img = new Image();
-            img.src = src;
-            return img;
-        });
-    };
 
     function hexToRGBA(hex, alpha) {
         const r = parseInt(hex.slice(1, 3), 16);
@@ -105,9 +98,6 @@ function World() {
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
-    useEffect(() => {
-        const images = loadMonsterImages();
-    }, []);
 
     // 몬스터 목록(각 몬스터들의 글로벌 좌표)
     const [monsters, setMonsters] = useState([]);
@@ -147,6 +137,20 @@ function World() {
 
     //점수
     const [score, setScore] = useState(0);
+
+    const monsterImages = [monster1, monster2, monster3, monster4, monster5, monster6, monster7];
+
+    useEffect(()=>{
+        const loadImages=()=>{
+            const images=monsterImages.map((src)=>{
+                const img=new Image();
+                img.src=src;
+                return img;
+            });
+            setMonsterImagesLoaded(images);
+        };
+        loadImages();
+    },[]);
 
     // ---------------------------------------------------------
     // (A) 브라우저 창 크기 변화 감지 -> 화면 중앙 재계산
@@ -419,6 +423,14 @@ function World() {
 
         // 3) 매 프레임마다 서버가 보내주는 'updateGameState' 이벤트 수신
         newSocket.on("updateGameState", (data) => {
+            const monstersWithImages = data.monsters.map((monster) => {
+                return {
+                    ...monster,
+                    imageIndex: monster.imageIndex ?? Math.floor(Math.random() * monsterImagesLoaded.length),
+                };
+            });
+        
+            setMonsters(monstersWithImages);
             setShip(data.ship);
             const currentPlayerPos = data.players[newSocket.id] || { x: 0, y: 0 };
             setPlayerPos(currentPlayerPos);
@@ -554,20 +566,22 @@ function World() {
                 const drawX = monster.x - cameraOffset.x - monster.radius;
                 const drawY = monster.y - cameraOffset.y - monster.radius;
 
-                ctx.fillStyle = 'green';
-                ctx.fillRect(drawX, drawY, monster.radius * 2, monster.radius * 2);
-                // if(!monster.imageIndex){
-                //   monster.imageIndex=Math.floor(Math.random()*monsterImages.length);
-                // }
+                const imageIndex = monster.imageIndex ?? 0;
+                const monsterImage = monsterImagesLoaded[imageIndex];
 
-                // const monsterImage=monsterImages[monster.imageIndex];
-
-                // if(monsterImage instanceof HTMLImageElement){
-                //   ctx.drawImage(monsterImage, drawX, drawY, monster.radius*2, monster.radius*2);
-                // }else{
-                //   console.error("invalid monster image:", monsterImage);
-                // }
-
+                if (monsterImage instanceof HTMLImageElement) {
+                    ctx.drawImage(
+                        monsterImage,
+                        drawX,
+                        drawY,
+                        monster.radius * 2,
+                        monster.radius * 2
+                    );
+                } else {
+                        // Fallback: Draw a green square if the image is not loaded
+                    ctx.fillStyle = "green";
+                    ctx.fillRect(drawX, drawY, monster.radius * 2, monster.radius * 2);
+                }
                 //몬스터 hp바
                 ctx.fillStyle = "red";
                 const hpBarWidth = (monster.hp / 3) * (monster.radius * 2);
