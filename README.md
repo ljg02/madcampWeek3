@@ -142,4 +142,11 @@
 
 ![play1](https://github.com/user-attachments/assets/48b21cea-7ce2-45b5-a175-20546d90405f)
 
+![play2](https://github.com/user-attachments/assets/0d2c02cd-8a3f-48e2-a5a5-3bac832e5078)
+
+![play3](https://github.com/user-attachments/assets/59af9ad6-ce91-4bee-9d90-8da61acdf500)
+
+![play4](https://github.com/user-attachments/assets/3844c5f7-555e-4db6-961f-20bfb788ea35)
+
+![play5](https://github.com/user-attachments/assets/d17820a2-a8f6-45d5-95d5-4fcb347754be)
 
