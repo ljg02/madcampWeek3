@@ -105,27 +105,27 @@
 - 총
     - 가장 기본적인 무기로 마우스에 따라 발사되는 방향이 변하며 몬스터에게 기본 데미지를 줍니다.
     
+![총발사](https://github.com/user-attachments/assets/78c2bc02-3ffd-4358-b562-b8c6201116c7)
 
-![총발사.gif](https://prod-files-secure.s3.us-west-2.amazonaws.com/f6cb388f-3934-47d6-9928-26d2e10eb0fc/af9b358b-08ec-46ff-a3bb-d8a6f818fa18/%EC%B4%9D%EB%B0%9C%EC%82%AC.gif)
 
 - 미사일
     - 미사일을 발사하여 몬스터를 맞히면 폭발하여 큰 광역 데미지를 줍니다.
     - 총보다 연사 속도와 탄속이 느려 신중하게 조준해야 합니다.
     
+![미사일 발사](https://github.com/user-attachments/assets/ce266bce-79f8-4314-9f0c-9c200d52e46f)
 
-![미사일 발사.gif](https://prod-files-secure.s3.us-west-2.amazonaws.com/f6cb388f-3934-47d6-9928-26d2e10eb0fc/4038abec-0a19-4762-9c35-30167284321e/%EB%AF%B8%EC%82%AC%EC%9D%BC_%EB%B0%9C%EC%82%AC.gif)
 
 - 방어막
     - 방어막으로 해당 방향의 몬스터를 튕겨낼 수 있습니다.
     
+![방어막](https://github.com/user-attachments/assets/9ebecca0-e060-4192-9264-a53e92ab9ae6)
 
-![방어막.gif](https://prod-files-secure.s3.us-west-2.amazonaws.com/f6cb388f-3934-47d6-9928-26d2e10eb0fc/15ee7bc6-09cf-443a-9ab9-b3bffcbf5395/%EB%B0%A9%EC%96%B4%EB%A7%89.gif)
 
 - 우주선 조종
     - 우주선을 조종하여 맵을 이동하고 몬스터를 피할 수 있습니다.
     
+![우주선 움직임](https://github.com/user-attachments/assets/e9cca142-6863-4088-ad51-a0503e8d5618)
 
-![우주선 움직임.gif](https://prod-files-secure.s3.us-west-2.amazonaws.com/f6cb388f-3934-47d6-9928-26d2e10eb0fc/b5eda0d7-d6ed-4b1e-875e-478752565cf4/%EC%9A%B0%EC%A3%BC%EC%84%A0_%EC%9B%80%EC%A7%81%EC%9E%84.gif)
 
 ### 게임 오버
 
@@ -133,7 +133,8 @@
 
 달성한 점수를 확인할 수 있고, 다시 시작 버튼을 누르면 메인 화면으로 돌아갑니다.
 
-![gameover.gif](https://prod-files-secure.s3.us-west-2.amazonaws.com/f6cb388f-3934-47d6-9928-26d2e10eb0fc/d55253fa-3ca1-4524-91c7-0998e3d0c857/gameover.gif)
+![gameover](https://github.com/user-attachments/assets/91334611-019a-4940-9661-2ef9c26979e0)
+
 
 ### 멀티 플레이
 
