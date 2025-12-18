@@ -139,3 +139,7 @@
 ### 멀티 플레이
 
 친구들과 같이 게임을 할 수가 있습니다.
+
+![play1](https://github.com/user-attachments/assets/48b21cea-7ce2-45b5-a175-20546d90405f)
+
+
